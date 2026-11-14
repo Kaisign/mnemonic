@@ -15,7 +15,7 @@ updated: 2026-11-14
 - Installer prompt: written, untested in a real session
 
 ## Next
-1. Test install in mnemonic-test
+1. Test install in a test repository
 2. Measure tokens vs a session without the system
 
 ## Decisions

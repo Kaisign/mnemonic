@@ -10,7 +10,7 @@ updated: 2026-11-14
 
 ## Next
 1. v0.0.7 fixes from 0.0.6 tests: check info before first commit; INDEX template wording (auto lookup); amend counted by hook; 6 sections mandatory in protocol; staged STATE.md not stale; start prompt for non-GitHub remotes; no counters in STATE
-2. Multi-day real project and parallel sessions test (install in <owner>/test-repo)
+2. Multi-day real project and parallel sessions test (install in a test repository)
 3. Private repo breaks raw URLs: install by clone or make public again
 
 ## Decisions
@@ -30,4 +30,3 @@ updated: 2026-11-14
 
 ## Notes
 - Tests: sh tests/test.sh
-- Old mirror <own-domain> retired from web01; user removes its DNS record

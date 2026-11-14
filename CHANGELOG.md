@@ -47,5 +47,5 @@
 - `artifacts/` for generated deliverables.
 - Automation: git pre-commit hook, agent session hooks, `mn archive`,
   `mn status`; persistent preferences in `.mnemonic/config`.
-- Installer prompt served at <own-domain>; benchmark suite with
+- Installer prompt served from a self-hosted domain (later retired); benchmark suite with
   charts and PDF report.

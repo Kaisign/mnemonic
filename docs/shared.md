@@ -23,7 +23,7 @@ other repositories link it as `owner/my-project#shared/infra`.
 
 Alternative: a separate hub repository, one folder per submonic.
 ```
-mnemonic-hub/
+hub/
   README.md          generated on first use
   infra/
     INDEX.md         - web01: server ip nginx webroot - Main VPS and services

@@ -31,6 +31,7 @@ Status: paused after v0.0.6 (2026-11-14). The repository is private.
 
 ## Hosting note
 Install and start prompts fetch `install.md`, `start.md` and `mn` from
-raw.githubusercontent.com, which only works while the repository is public.
+raw.githubusercontent.com/<owner>/mnemonic, which only works while the repository is public
+(set MN_REPO=<owner>/mnemonic for `mn update`).
 While it is private, install by cloning the repository with access and running
 `sh mn init` from the target repository, or make it public again.

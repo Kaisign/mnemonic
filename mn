@@ -4,8 +4,9 @@
 set -eu
 
 MN_VERSION="0.0.6"
-MN_REPO_URL="https://github.com/<owner>/mnemonic"
-MN_URL="${MN_URL:-https://raw.githubusercontent.com/<owner>/mnemonic/main}"
+MN_REPO="${MN_REPO:-<owner>/mnemonic}"   # GitHub repository hosting mnemonic
+MN_REPO_URL="https://github.com/$MN_REPO"
+MN_URL="${MN_URL:-https://raw.githubusercontent.com/$MN_REPO/main}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
 END_MARK="<!-- mnemonic:end -->"
@@ -63,7 +64,8 @@ init options (defaults in brackets):
   --dir <path>             Target repo root [git toplevel or cwd]
 
 Environment: MN_MAX_TOKENS (STATE.md budget, 1500), MN_STALE_DAYS (90), MN_TASK_COMMITS (3),
-MN_CACHE_TTL (3600 s), MN_RESUME_WARN (50000 tokens), MN_URL, MN_SKIP=1 (bypass pre-commit once).
+MN_CACHE_TTL (3600 s), MN_RESUME_WARN (50000 tokens), MN_REPO (owner/name hosting mnemonic),
+MN_URL, MN_SKIP=1 (bypass pre-commit once).
 EOF
 }
 
@@ -946,6 +948,7 @@ cmd_status() {
 cmd_update() {
   cd "$(root_dir)"
   mkdir -p .mnemonic
+  case "$MN_URL" in *"<owner>"*) die "set MN_REPO=<owner>/mnemonic (or MN_URL) to the repository hosting mnemonic";; esac
   tmp=$(mktemp)
   if command -v curl >/dev/null 2>&1; then curl -fsSL "$MN_URL/mn" -o "$tmp"
   elif command -v wget >/dev/null 2>&1; then wget -qO "$tmp" "$MN_URL/mn"

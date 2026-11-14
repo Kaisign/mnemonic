@@ -97,6 +97,7 @@ verifies the shebang and replaces `.mnemonic/mn`.
 | Variable | Default | Use |
 |---|---|---|
 | `MN_MAX_TOKENS` | 1500 | STATE.md budget for `check` |
+| `MN_REPO` | <owner>/mnemonic | GitHub repository hosting mnemonic (used for `update` and the start prompt) |
 | `MN_URL` | https://raw.githubusercontent.com/<owner>/mnemonic/main | Source for `update` (any mirror, or a tag: `.../v0.0.6`) |
 | `MN_DIR` | repo root | Target directory |
 | `MN_STALE_DAYS` | 90 | Age after which `check` suggests archiving a topic |
