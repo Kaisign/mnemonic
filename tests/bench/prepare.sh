@@ -60,7 +60,7 @@ for s in "$here"/s*-*/; do
     if [ "$c" = with ]; then
       cat > "$w/AGENTS.md" <<'EOF'
 Project memory (mnemonic): STATE.md is the current project state; read it first.
-Long-term memory: memory/INDEX.md lists topics. Open a topic file only if a question needs it.
+Long-term memory: if STATE.md lacks a fact you need, read memory/INDEX.md and open the matching topic before answering "unknown".
 Do not read anything else.
 EOF
     else

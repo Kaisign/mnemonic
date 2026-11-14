@@ -21,6 +21,7 @@ done
 t "chat_lang applied" "grep -q '^- chat_lang: es' AGENTS.md"
 t "CLAUDE.md imports AGENTS" "grep -qx '@AGENTS.md' CLAUDE.md"
 t "CLAUDE.md imports STATE" "grep -qx '@STATE.md' CLAUDE.md"
+t "protocol has automatic memory lookup" "grep -q 'STATE.md does not have' AGENTS.md"
 t "installed mn is executable" "[ -x .mnemonic/mn ]"
 git add -A && git commit -qm init
 t "check passes on fresh install" "sh .mnemonic/mn check"

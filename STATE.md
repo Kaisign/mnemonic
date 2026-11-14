@@ -25,6 +25,7 @@ updated: 2026-11-14
 - mn in POSIX sh -> runs anywhere with git
 - Self-hosted nginx + Let's Encrypt, cron git pull every 5 min -> publish = push to main
 - Shared memory: one private hub, folder per submonic (repo per submonic optional); all sessions write, rebase on push
+- Long-term memory searched automatically when STATE.md lacks a fact -> real test missed 3/7 without it
 
 ## Blockers
 - Only claude adapter supported for now

@@ -111,13 +111,13 @@ agents_block() {
 ## Memory protocol
 Files:
 - STATE.md: live project state. Loaded every session. Budget ~1500 tokens.
-- memory/INDEX.md + memory/<topic>.md: long-term memory. Do NOT read unless the user asks. Then read INDEX.md (or run `.mnemonic/mn mem find <words>`) and open only the needed topic.
+- memory/INDEX.md + memory/<topic>.md: long-term memory. Never read it whole. When you need a fact that STATE.md does not have (or the user asks), run `.mnemonic/mn mem find <words>` and open only the matching topic, before answering "unknown" or re-exploring code.
 - .mnemonic/mn: helper CLI (`.mnemonic/mn help`). Guide: .mnemonic/README.md.
 
 Session start:
 1. If STATE.md is not already in context, read it. Nothing else by default.
 2. If it may be outdated, run `.mnemonic/mn check` (reports commits since the last STATE.md update).
-3. Do not re-explore what STATE.md answers. Do not reopen recorded decisions without new facts.
+3. Do not re-explore what STATE.md or a memory topic answers. Do not reopen recorded decisions without new facts.
 
 Before the final commit of a task or session:
 1. Rewrite STATE.md; never append. Drop finished items: git log is the history.
@@ -138,7 +138,7 @@ shared_section() {
   grep -q '^[A-Za-z0-9._-]* *=' .mnemonic/links || return 0
   echo
   echo "## Shared memory"
-  echo "Submonics shared with other sessions; every session may read and write. Read only when needed."
+  echo "Submonics shared with other sessions; every session may read and write. Search them when a needed fact is in neither STATE.md nor local memory."
   sed -n 's/^\([A-Za-z0-9._-]*\) *= *[^|]*|* *\(.*\)$/- \1: \2/p' .mnemonic/links | sed 's/: $//'
   cat <<'EOF'
 - Find: `.mnemonic/mn sub find <words>`. Read: `.mnemonic/mn sub show <name>/<topic>`.
@@ -197,7 +197,7 @@ old conversations.
 | AGENTS.md | every session | Preferences and the memory protocol, between `mnemonic:begin/end` markers. Content outside the markers is yours. |
 | CLAUDE.md | every session | Adapter for agents that do not read AGENTS.md natively. It only imports `@AGENTS.md` and `@STATE.md`, so both load at start without extra reads. |
 | STATE.md | every session | Live state: Goal, Current, Next, Decisions, Blockers, Notes. Rewritten, never appended. Budget ~1500 tokens. |
-| memory/INDEX.md | on demand | One line per long-term topic: name, keywords, summary. |
+| memory/INDEX.md | when needed | One line per long-term topic: name, keywords, summary. Searched automatically when STATE.md lacks a fact. |
 | memory/<topic>.md | on demand | Long-term knowledge: architecture, old decisions, failed approaches, domain context. |
 | .mnemonic/mn | never (run) | Helper CLI. |
 
@@ -213,9 +213,10 @@ History lives in `git log`; STATE.md only describes the present and the next
 steps, so its size, and its cost per session, stays constant.
 
 ## Using long-term memory
-It is never read automatically. Ask for it explicitly, e.g.
-"check memory about authentication". The agent then reads only the index (or
-runs `mn mem find`) and opens the single matching topic file.
+It is never loaded whole. When the agent needs a fact that STATE.md does not
+have, it searches the index (`mn mem find`) and opens only the matching topic,
+before answering "unknown" or re-exploring the code. You can also ask for it,
+e.g. "check memory about authentication".
 
 ## Commands
 ```

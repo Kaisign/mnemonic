@@ -14,13 +14,13 @@
 ## Memory protocol
 Files:
 - STATE.md: live project state. Loaded every session. Budget ~1500 tokens.
-- memory/INDEX.md + memory/<topic>.md: long-term memory. Do NOT read unless the user asks. Then read INDEX.md (or run `.mnemonic/mn mem find <words>`) and open only the needed topic.
+- memory/INDEX.md + memory/<topic>.md: long-term memory. Never read it whole. When you need a fact that STATE.md does not have (or the user asks), run `.mnemonic/mn mem find <words>` and open only the matching topic, before answering "unknown" or re-exploring code.
 - .mnemonic/mn: helper CLI (`.mnemonic/mn help`). Guide: .mnemonic/README.md.
 
 Session start:
 1. If STATE.md is not already in context, read it. Nothing else by default.
 2. If it may be outdated, run `.mnemonic/mn check` (reports commits since the last STATE.md update).
-3. Do not re-explore what STATE.md answers. Do not reopen recorded decisions without new facts.
+3. Do not re-explore what STATE.md or a memory topic answers. Do not reopen recorded decisions without new facts.
 
 Before the final commit of a task or session:
 1. Rewrite STATE.md; never append. Drop finished items: git log is the history.

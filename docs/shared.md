@@ -43,7 +43,9 @@ Repositories are cloned into `.mnemonic/cache/<url-slug>/`, ignored by git
 submonics it holds. Clones take the author name and email of the host
 repository, so shared commits follow the same identity rules.
 
-## Reading (on demand only)
+## Reading (when needed)
+The agent searches shared memory when a fact is in neither STATE.md nor local
+memory, or when the user asks.
 - `mn sub find <words>`: searches the INDEX.md of every linked submonic,
   prints `name/topic: keywords - summary`. Clones missing caches; prints an
   info line when a cache is older than one day (`mn sub sync` refreshes).

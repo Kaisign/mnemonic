@@ -30,8 +30,10 @@ choice is judged by tokens read per session.
   expanded when the session starts, so AGENTS.md and STATE.md are in context
   from the first turn with no tool call. Without imports, the protocol tells
   the agent to read STATE.md itself (one extra read).
-- Long-term and shared memory are never imported. Their cost is zero until
-  used; only one line per linked submonic appears in AGENTS.md.
+- Long-term and shared memory are never imported. They are searched
+  automatically only when a needed fact is missing from STATE.md (index
+  first, then one topic), so their cost is zero until used; only one line per
+  linked submonic appears in AGENTS.md.
 
 ## Why one STATE.md and no history file
 - Everything loaded every session must have a fixed size, or its cost grows

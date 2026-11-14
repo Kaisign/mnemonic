@@ -96,8 +96,9 @@ Run `.mnemonic/mn status` and show its output. Then, in `chat_lang`, briefly
 explain:
 - AGENTS.md (preferences + protocol) and STATE.md load at every session start.
 - STATE.md is rewritten at the end of each task, never appended; history is git log.
-- Long-term memory (memory/) is only read when they ask, e.g.
-  "check memory about <topic>"; only the index and one topic are opened.
+- Long-term memory (memory/) is never loaded whole: when a fact is missing
+  from STATE.md the agent searches its index and opens one topic. The user can
+  also ask, e.g. "check memory about <topic>".
 - If enabled: shared memory is looked up on demand with `mn sub find`, and
   any session may add or update topics; it is never loaded automatically.
 - Change preferences by editing AGENTS.md or re-running `.mnemonic/mn init`

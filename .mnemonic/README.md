@@ -10,7 +10,7 @@ old conversations.
 | AGENTS.md | every session | Preferences and the memory protocol, between `mnemonic:begin/end` markers. Content outside the markers is yours. |
 | CLAUDE.md | every session | Adapter for agents that do not read AGENTS.md natively. It only imports `@AGENTS.md` and `@STATE.md`, so both load at start without extra reads. |
 | STATE.md | every session | Live state: Goal, Current, Next, Decisions, Blockers, Notes. Rewritten, never appended. Budget ~1500 tokens. |
-| memory/INDEX.md | on demand | One line per long-term topic: name, keywords, summary. |
+| memory/INDEX.md | when needed | One line per long-term topic: name, keywords, summary. Searched automatically when STATE.md lacks a fact. |
 | memory/<topic>.md | on demand | Long-term knowledge: architecture, old decisions, failed approaches, domain context. |
 | .mnemonic/mn | never (run) | Helper CLI. |
 
@@ -26,9 +26,10 @@ History lives in `git log`; STATE.md only describes the present and the next
 steps, so its size, and its cost per session, stays constant.
 
 ## Using long-term memory
-It is never read automatically. Ask for it explicitly, e.g.
-"check memory about authentication". The agent then reads only the index (or
-runs `mn mem find`) and opens the single matching topic file.
+It is never loaded whole. When the agent needs a fact that STATE.md does not
+have, it searches the index (`mn mem find`) and opens only the matching topic,
+before answering "unknown" or re-exploring the code. You can also ask for it,
+e.g. "check memory about authentication".
 
 ## Commands
 ```
