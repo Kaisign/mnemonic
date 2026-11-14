@@ -26,17 +26,38 @@ Both conditions contain the same facts. `expected.txt` holds grading
 patterns (`pattern && pattern`, case-insensitive regex, all must match); it is
 never copied into workspaces.
 
+## Conversation length
+`prepare.sh --pad N` lengthens each transcript to ~N tokens by interleaving
+neutral side conversations from `filler.md` between the original turns
+(ticket ids vary per insertion). Facts, corrections and their order are
+unchanged, and STATE.md is unchanged, so only the history size varies. This
+reproduces how a real conversation grows while the distilled state does not.
+
 ## Run
-Automatic, with subagents: see [PROMPT.md](PROMPT.md).
+Automatic, with subagents: see [PROMPT.md](PROMPT.md). Latest results:
+[RESULTS.md](RESULTS.md).
 
 Manual:
 ```
-sh tests/bench/prepare.sh /tmp/bench      # builds 6 workspaces, prints prompts
+sh tests/bench/prepare.sh /tmp/b15000 --pad 15000   # 6 workspaces + prompts
 # run each prompt in a fresh session (or subagent)
-sh tests/bench/grade.sh /tmp/bench        # scores + context size
+sh tests/bench/grade.sh /tmp/b15000                 # table
+sh tests/bench/grade.sh /tmp/b15000 --csv 15k       # CSV rows
+python3 tests/bench/chart.py                        # SVG charts + report.html
+node tests/bench/pdf.js                             # report.pdf (playwright)
 ```
-Optionally write each run's reported token usage to
-`<workspace>/usage.txt` to get the `agent_tokens` column and summary.
+Write each run's reported token usage to `<workspace>/usage.txt` and tool
+call count to `<workspace>/tools.txt` to fill those columns.
+
+## Files
+| File | Role |
+|---|---|
+| `prepare.sh` | Builds isolated workspaces, pads transcripts, prints prompts |
+| `grade.sh` | Grades answers; table or CSV |
+| `chart.py` | Charts (SVG, light/dark) and HTML report from `results/results.csv`; stdlib only |
+| `pdf.js` | Prints the report to PDF with playwright |
+| `filler.md` | Neutral side conversations used for padding (`%%` separates blocks) |
+| `results/` | Latest CSV, charts, report |
 
 ## Output
 ```

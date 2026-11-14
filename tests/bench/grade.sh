@@ -1,11 +1,15 @@
 #!/bin/sh
 # Grade benchmark answers and report context size per run.
-# Usage: sh tests/bench/grade.sh <out-dir>
+# Usage: sh tests/bench/grade.sh <out-dir> [--csv <label>]
 # Optional per run: <out-dir>/<scenario>/<condition>/usage.txt with the agent's
-# reported token count (single number), shown in the "agent tokens" column.
+# reported token count (single number), shown in the "agent tokens" column,
+# and tools.txt with its tool call count.
+# --csv prints rows instead of the table:
+#   label,scenario,memory,correct,total,ctx_tokens,agent_tokens,tool_uses
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-out=${1:?usage: grade.sh <out-dir>}
+out=${1:?usage: grade.sh <out-dir> [--csv <label>]}
+csv=""; [ "${2:-}" = --csv ] && csv=${3:?missing label}
 
 ctx_bytes() {
   # Bytes the run needs as memory context (files offered by the condition).
@@ -33,6 +37,19 @@ grade_one() {
   done < "$2"
   printf '%s/%s|%s\n' "$ok" "$n" "${failed# }"
 }
+
+if [ -n "$csv" ]; then
+  for s in "$here"/s*-*/; do
+    s=$(basename "$s")
+    for c in without with; do
+      w="$out/$s/$c"; [ -d "$w" ] || continue
+      r=$(grade_one "$w/answers.txt" "$here/$s/expected.txt"); score=${r%%|*}
+      printf '%s,%s,%s,%s,%s,%s,%s,%s\n' "$csv" "$s" "$c" "${score%/*}" "${score#*/}" \
+        "$(( $(ctx_bytes "$w") / 4 ))" "$(cat "$w/usage.txt" 2>/dev/null)" "$(cat "$w/tools.txt" 2>/dev/null)"
+    done
+  done
+  exit 0
+fi
 
 printf '%-15s %-8s %8s %9s %12s  %s\n' scenario memory correct ctx_tok agent_tokens failed
 tot_w=0 tot_o=0 tok_w=0 tok_o=0

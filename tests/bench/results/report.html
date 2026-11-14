@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>mnemonic benchmark</title><style>
+:root{--bg:#fcfcfb;--t1:#0b0b0b;--t2:#52514e;--line:#e4e3df}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1a19;--t1:#f0efec;--t2:#c3c2b7;--line:#383835}}
+body{background:var(--bg);color:var(--t1);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;max-width:760px;margin:24px auto;padding:0 16px}
+h1{font-size:22px;margin:0 0 4px}p,li{color:var(--t2)}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}
+.tile{border:1px solid var(--line);border-radius:8px;padding:12px}.tile b{font-size:26px;display:block}.tile span{color:var(--t2);font-size:12px}
+img{max-width:100%;height:auto;margin:12px 0;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:right}td:nth-child(-n+3),th:nth-child(-n+3){text-align:left}
+@media print{img{break-inside:avoid}}</style></head><body>
+<h1>mnemonic benchmark</h1><p>Resuming a project from a previous conversation, with and without mnemonic. 3 scenarios (linear, abstract, analytical), 3 conversation lengths, small model subagents, automatic grading.</p>
+<div class="tiles"><div class="tile"><b>26%</b><span>fewer agent tokens at ~15.0K</span></div><div class="tile"><b>98%</b><span>less memory context to read</span></div><div class="tile"><b>96/96</b><span>answers correct (valid runs)</span></div><div class="tile"><b>1</b><span>protocol miss (rerun passed)</span></div></div>
+<img src="scaling.svg" alt="Line chart: agent tokens grow with conversation length without mnemonic and stay flat with it">
+<p>Savings by conversation length: ~681: 1%, ~5.0K: 9%, ~15.0K: 26%. Without memory the cost grows with the conversation; with mnemonic it stays flat because STATE.md does not grow.</p>
+<img src="scenarios.svg" alt="Bar chart: tokens per scenario at the longest length">
+<img src="context.svg" alt="Bar chart: memory context tokens per length">
+<h2>Method</h2><ul>
+<li>Each scenario is a finished conversation where facts are later corrected (renames, changed numbers, reordered steps).</li>
+<li>Without: the agent reads the transcript. With: STATE.md and on-demand long-term memory distilled from the same conversation.</li>
+<li>Longer lengths interleave neutral side conversations; facts and order unchanged; STATE.md unchanged.</li>
+<li>Agent tokens include a fixed ~64K overhead per agent (instructions, tools), identical in both conditions.</li>
+<li>One "with" run skipped STATE.md and answered "unknown"; it is listed below and was rerun. In real installs STATE.md is auto-loaded through the adapter import, which removes this failure mode.</li>
+<li>The baseline is generous: a real session without memory has no transcript and must re-explore code or ask the user.</li></ul>
+<h2>All runs</h2><table><tr><th>length</th><th>scenario</th><th>memory</th><th>correct</th><th>context</th><th>agent tokens</th><th>tools</th></tr>
+<tr><td>1k</td><td>s1-linear</td><td>without</td><td>5/5</td><td>906</td><td>65,499</td><td>5</td></tr>
+<tr><td>1k</td><td>s1-linear</td><td>with</td><td>5/5</td><td>335</td><td>65,234</td><td>7</td></tr>
+<tr><td>1k</td><td>s2-abstract</td><td>without</td><td>6/6</td><td>625</td><td>66,115</td><td>6</td></tr>
+<tr><td>1k</td><td>s2-abstract</td><td>with</td><td>6/6</td><td>283</td><td>65,104</td><td>7</td></tr>
+<tr><td>1k</td><td>s3-analytical</td><td>without</td><td>5/5</td><td>511</td><td>65,207</td><td>5</td></tr>
+<tr><td>1k</td><td>s3-analytical</td><td>with</td><td>5/5</td><td>199</td><td>64,657</td><td>5</td></tr>
+<tr><td>5k</td><td>s1-linear</td><td>without</td><td>5/5</td><td>5,013</td><td>72,921</td><td>6</td></tr>
+<tr><td>5k</td><td>s1-linear</td><td>with</td><td>5/5</td><td>335</td><td>65,232</td><td>7</td></tr>
+<tr><td>5k</td><td>s2-abstract</td><td>without</td><td>6/6</td><td>5,042</td><td>72,701</td><td>5</td></tr>
+<tr><td>5k</td><td>s2-abstract</td><td>with</td><td>6/6</td><td>283</td><td>69,817</td><td>8</td></tr>
+<tr><td>5k</td><td>s3-analytical</td><td>without</td><td>5/5</td><td>5,038</td><td>73,007</td><td>5</td></tr>
+<tr><td>5k</td><td>s3-analytical</td><td>with</td><td>5/5</td><td>199</td><td>64,955</td><td>5</td></tr>
+<tr><td>15k</td><td>s1-linear</td><td>without</td><td>5/5</td><td>15,019</td><td>87,975</td><td>5</td></tr>
+<tr><td>15k</td><td>s1-linear</td><td>with</td><td>5/5</td><td>335</td><td>65,472</td><td>8</td></tr>
+<tr><td>15k</td><td>s2-abstract</td><td>without</td><td>6/6</td><td>15,048</td><td>88,249</td><td>5</td></tr>
+<tr><td>15k</td><td>s2-abstract</td><td>with</td><td>6/6</td><td>283</td><td>65,477</td><td>7</td></tr>
+<tr><td>15k</td><td>s3-analytical</td><td>without</td><td>5/5</td><td>15,044</td><td>88,420</td><td>5</td></tr>
+<tr><td>15k</td><td>s3-analytical</td><td>with</td><td>5/5</td><td>199</td><td>64,790</td><td>5</td></tr>
+<tr><td>5k-failed</td><td>s2-abstract</td><td>with</td><td>0/6</td><td>283</td><td>64,076</td><td>4</td></tr></table></body></html>

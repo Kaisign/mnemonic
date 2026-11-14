@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" width="720" height="380" role="img" aria-label="Memory context the agent must read">
+<style>
+.bg{fill:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.grid{stroke:#e4e3df}.axis{stroke:#9b9a94}
+.s1{fill:#2a78d6;stroke:#2a78d6}.s2{fill:#eb6834;stroke:#eb6834}.gap{stroke:#fcfcfb}
+text{font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}
+.grid{stroke:#383835}.axis{stroke:#6b6a64}.s1{fill:#3987e5;stroke:#3987e5}.s2{fill:#d95926;stroke:#d95926}.gap{stroke:#1a1a19}}
+</style>
+<title>Memory context the agent must read</title>
+<rect class="bg" width="720" height="380"/>
+<text class="t1" x="24" y="30" font-size="16" font-weight="600">Memory context the agent must read</text>
+<text class="t2" x="24" y="50" font-size="12">Mean tokens of transcript (without) vs STATE.md + memory (with)</text>
+<rect class="s1" x="70" y="65" width="10" height="10" rx="2"/>
+<text class="t2" x="86" y="74" font-size="12">Without mnemonic</text>
+<rect class="s2" x="220" y="65" width="10" height="10" rx="2"/>
+<text class="t2" x="236" y="74" font-size="12">With mnemonic</text>
+<line class="grid" x1="70" x2="696" y1="320.0" y2="320.0" stroke-width="1"/>
+<text class="t2" x="62" y="324.0" font-size="11" text-anchor="end">0</text>
+<line class="grid" x1="70" x2="696" y1="262.5" y2="262.5" stroke-width="1"/>
+<text class="t2" x="62" y="266.5" font-size="11" text-anchor="end">5.0K</text>
+<line class="grid" x1="70" x2="696" y1="205.0" y2="205.0" stroke-width="1"/>
+<text class="t2" x="62" y="209.0" font-size="11" text-anchor="end">10.0K</text>
+<line class="grid" x1="70" x2="696" y1="147.5" y2="147.5" stroke-width="1"/>
+<text class="t2" x="62" y="151.5" font-size="11" text-anchor="end">15.0K</text>
+<line class="grid" x1="70" x2="696" y1="90.0" y2="90.0" stroke-width="1"/>
+<text class="t2" x="62" y="94.0" font-size="11" text-anchor="end">20.0K</text>
+<line class="axis" x1="70" x2="696" y1="320" y2="320" stroke-width="1"/>
+<text class="t2" x="18" y="205.0" font-size="11" transform="rotate(-90 18 205.0)" text-anchor="middle">context tokens</text>
+<path class="s1" stroke-width="0" d="M117.33333333333331,320.0 V316.1723333333333 Q117.33333333333331,312.1723333333333 121.33333333333331,312.1723333333333 H169.33333333333331 Q173.33333333333331,312.1723333333333 173.33333333333331,316.1723333333333 V320.0 Z"/>
+<text class="t1" x="145.3" y="306.2" font-size="11" text-anchor="middle">681</text>
+<path class="s2" stroke-width="0" d="M175.33333333333331,320.0 V320.0 Q175.33333333333331,316.86816666666664 178.46516666666665,316.86816666666664 H228.20149999999998 Q231.33333333333331,316.86816666666664 231.33333333333331,320.0 V320.0 Z"/>
+<text class="t1" x="203.3" y="310.9" font-size="11" text-anchor="middle">272</text>
+<text class="t2" x="174.3" y="338" font-size="12" text-anchor="middle">~681</text>
+<path class="s1" stroke-width="0" d="M325.99999999999994,320.0 V266.1435 Q325.99999999999994,262.1435 329.99999999999994,262.1435 H377.99999999999994 Q381.99999999999994,262.1435 381.99999999999994,266.1435 V320.0 Z"/>
+<text class="t1" x="354.0" y="256.1" font-size="11" text-anchor="middle">5.0K</text>
+<path class="s2" stroke-width="0" d="M383.99999999999994,320.0 V320.0 Q383.99999999999994,316.86816666666664 387.1318333333333,316.86816666666664 H436.8681666666666 Q439.99999999999994,316.86816666666664 439.99999999999994,320.0 V320.0 Z"/>
+<text class="t1" x="412.0" y="310.9" font-size="11" text-anchor="middle">272</text>
+<text class="t2" x="383.0" y="338" font-size="12" text-anchor="middle">~5.0K</text>
+<path class="s1" stroke-width="0" d="M534.6666666666666,320.0 V151.0745 Q534.6666666666666,147.0745 538.6666666666666,147.0745 H586.6666666666666 Q590.6666666666666,147.0745 590.6666666666666,151.0745 V320.0 Z"/>
+<text class="t1" x="562.7" y="141.1" font-size="11" text-anchor="middle">15.0K</text>
+<path class="s2" stroke-width="0" d="M592.6666666666666,320.0 V320.0 Q592.6666666666666,316.86816666666664 595.7985,316.86816666666664 H645.5348333333333 Q648.6666666666666,316.86816666666664 648.6666666666666,320.0 V320.0 Z"/>
+<text class="t1" x="620.7" y="310.9" font-size="11" text-anchor="middle">272</text>
+<text class="t2" x="591.7" y="338" font-size="12" text-anchor="middle">~15.0K</text>
+</svg>

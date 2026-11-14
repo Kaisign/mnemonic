@@ -6,11 +6,11 @@ updated: 2026-11-14
 
 ## Current
 - v0.1.0 published (/, /install.md, /mn); install untested in a real session
-- Benchmark tests/bench: 16/16 both conditions, memory context -60%, agent tokens -1% (fixed overhead dominates short sample)
+- Benchmark tests/bench (18 runs, 3 lengths): savings 1%/9%/26% at 0.7K/5K/15K history; 96/96 correct; charts + PDF in tests/bench/results
 
 ## Next
 1. Test install in <owner>/test-repo from a fresh session
-2. Long-transcript benchmark variant to show agent-level savings (pending user)
+2. Optional: benchmark at 50K+ history and with a larger model
 3. Continuity test: second session resumes from STATE.md
 
 ## Decisions

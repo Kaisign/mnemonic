@@ -1,27 +1,35 @@
 # Results
 
-## 2026-11-14 - mn 0.1.0, small model subagents, 6 runs
-| Scenario | Memory | Correct | Memory context | Agent tokens | Tool uses |
-|---|---|---|---|---|---|
-| s1-linear | without | 5/5 | ~906 | 65,499 | 5 |
-| s1-linear | with | 5/5 | ~335 | 65,234 | 7 |
-| s2-abstract | without | 6/6 | ~625 | 66,115 | 6 |
-| s2-abstract | with | 6/6 | ~283 | 65,104 | 7 |
-| s3-analytical | without | 5/5 | ~511 | 65,207 | 5 |
-| s3-analytical | with | 5/5 | ~199 | 64,657 | 5 |
+2026-11-14, mn 0.1.0, small-model subagents, 18 graded runs + 1 rerun.
+Full report: [results/report.pdf](results/report.pdf) (also `report.html`),
+data: [results/results.csv](results/results.csv).
 
-Totals: memory context ~2,042 -> ~817 tokens (-60%); agent tokens
-196,821 -> 194,995 (-1%); accuracy 16/16 in both conditions.
+![Tokens vs conversation length](results/scaling.svg)
 
-Findings:
-- No accuracy loss: distilled state answered every question, including
-  corrected values and the on-demand memory lookups (s1 Q4, s2 Q5).
-- Memory context shrinks 60% even on very short transcripts.
-- Agent-level saving is ~1% here because each subagent carries ~64K tokens of
-  fixed overhead and the sample transcripts are under 1K tokens. The saving
-  per run is the context difference (~200-600 tokens) multiplied by the
-  turns that re-read it.
-- Long-term memory lookups cost 2 extra tool calls (index + topic); worth it
-  only when the topic file replaces a much larger read.
-- The baseline is generous: a real session without memory has no transcript
-  at all and must re-explore code or ask the user.
+| Previous conversation | Agent tokens without | with | Saving | Memory context without -> with |
+|---|---|---|---|---|
+| ~0.7K tokens | 65,607 | 64,998 | 1% | 681 -> 272 |
+| ~5K tokens | 72,876 | 66,668 | 9% | 5,031 -> 272 |
+| ~15K tokens | 88,215 | 65,246 | 26% | 15,037 -> 272 |
+
+![Tokens per scenario](results/scenarios.svg)
+![Memory context](results/context.svg)
+
+## Findings
+- Without memory, tokens grow linearly with the conversation length; with
+  mnemonic they stay flat (~65K, almost all fixed agent overhead) because
+  STATE.md does not grow.
+- Saving reached 26% at only ~15K tokens of history. Real projects
+  accumulate far more, so savings keep rising with project age.
+- Accuracy: 96/96 answers correct in valid runs, in both conditions,
+  including corrected facts and on-demand memory lookups.
+- One protocol miss: a "with" run at 5K skipped STATE.md and answered
+  "unknown" (0/6). Rerun with identical input: 6/6. Kept in the CSV as
+  `5k-failed`. In real installs STATE.md is auto-loaded by the adapter
+  import, which removes this failure mode.
+- Long-term memory lookups add 2-3 tool calls; cheap compared with reading a
+  long transcript.
+- Fixed overhead (~64K per agent) hides the saving at small sizes: it is the
+  same in both conditions and mnemonic cannot reduce it.
+- The baseline is generous: a session without memory normally has no
+  transcript and must re-explore code or ask the user.
