@@ -85,7 +85,49 @@ t "missing topic file detected" "sh .mnemonic/mn check | grep -q 'index entry wi
 sh .mnemonic/mn mem add db 'postgres' 'DB' >/dev/null; sed -i '/^- db:/d' memory/INDEX.md
 t "unindexed topic detected" "sh .mnemonic/mn check | grep -q 'topic not in index'"
 
-# 7. Misc
+# 7. Preferences persist across re-init
+new_repo
+sh "$MN" init --chat-lang es --tone formal >/dev/null
+sh "$MN" init >/dev/null
+t "re-init without flags keeps prefs" "grep -q '^- chat_lang: es' AGENTS.md && grep -q '^- tone: formal' AGENTS.md"
+t "config saved" "grep -qx 'chat_lang=es' .mnemonic/config"
+t "cache ignored by git" "grep -qx '.mnemonic/cache/' .gitignore"
+
+# 8. Shared memory: two sessions in different repos, one hub
+hub=$(mktemp -d)/hub.git; git init -q --bare -b main "$hub"
+new_repo; A=$d
+sh "$MN" init >/dev/null
+t "link creates submonic" "sh .mnemonic/mn sub link infra '$hub#infra' 'servers and domains'"
+t "AGENTS lists submonic" "grep -q '^- infra: servers and domains' AGENTS.md"
+t "AGENTS has shared section" "grep -q '^## Shared memory' AGENTS.md"
+t "hub has index" "git --git-dir='$hub' show HEAD:infra/INDEX.md"
+t "hub has README" "git --git-dir='$hub' show HEAD:README.md"
+t "duplicate link rejected" "! sh .mnemonic/mn sub link infra '$hub#infra'"
+t "sub add" "sh .mnemonic/mn sub add infra web01 'server ip nginx' 'Main VPS'"
+t "topic pushed to hub" "git --git-dir='$hub' show HEAD:infra/web01.md | grep -q '^# web01'"
+t "hub commits use repo author" "[ \"\$(git --git-dir='$hub' log -1 --format=%an)\" = t ]"
+
+new_repo; B=$d
+sh "$MN" init >/dev/null
+sh .mnemonic/mn sub link infra "$hub#infra" "servers and domains" >/dev/null
+t "other session finds topic" "sh .mnemonic/mn sub find nginx | grep -q 'infra/web01'"
+t "other session reads topic" "sh .mnemonic/mn sub show infra/web01 | grep -q 'Main VPS'"
+echo "- webroot: /var/www/site" >> "$(sh .mnemonic/mn sub path infra)/web01.md"
+t "save edits" "sh .mnemonic/mn sub save infra 'Add webroot'"
+t "edit reached hub" "git --git-dir='$hub' show HEAD:infra/web01.md | grep -q webroot"
+
+cd "$A"
+t "concurrent add (stale cache) rebases" "sh .mnemonic/mn sub add infra dns 'domain records' 'DNS setup'"
+t "both writes in hub" "git --git-dir='$hub' show HEAD:infra/web01.md | grep -q webroot && git --git-dir='$hub' show HEAD:infra/INDEX.md | grep -q '^- dns:'"
+t "find miss" "! sh .mnemonic/mn sub find payments"
+t "list shows topics" "sh .mnemonic/mn sub list | grep -q '2 topics'"
+t "second submonic in same hub" "sh .mnemonic/mn sub link profile '$hub#profile' 'user preferences'"
+t "single clone for both" "[ \$(ls .mnemonic/cache | wc -l) -eq 1 ]"
+t "unlink" "sh .mnemonic/mn sub unlink profile && ! grep -q '^- profile:' AGENTS.md"
+t "unknown submonic rejected" "! sh .mnemonic/mn sub show nope/x"
+t "cache not tracked" "git add -A && ! git status --porcelain | grep -q cache"
+
+# 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"
 t "unknown command fails" "! sh '$MN' bogus"
