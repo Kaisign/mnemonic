@@ -1,0 +1,6 @@
+Q1: link
+Q2: (^|[^0-9])6([^0-9]|$)|six
+Q3: no && first
+Q4: green && 4 && (4 point|4 pts|scor.*4|4$|= ?4|: ?4)
+Q5: long
+Q6: 58

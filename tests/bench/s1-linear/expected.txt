@@ -1,0 +1,5 @@
+Q1: build.*migrat.*test.*deploy.*smoke.*notif
+Q2: 9090 && metric
+Q3: (^|[^0-9])5([^0-9]|$)|five
+Q4: pino && (perf|fast|overhead|ms|latenc)
+Q5: eu-central-1
