@@ -20,6 +20,8 @@ choice is judged by tokens read per session.
 | `.mnemonic/hooks/pre-commit` | by git | mnemonic | Enforces STATE.md updates. See [automation.md](automation.md). |
 | `.claude/settings.json` | by the agent | user + mnemonic hooks | Adapter hooks: session start, turn end. |
 | `memory/archive/` | never | agent | Archived topics, out of the index. |
+| `shared/<name>/` | when needed | all linked sessions | In-repo shared memory (submonics linked as `self`). See [shared.md](shared.md). |
+| `artifacts/` | never | agent | Generated deliverables (reports, charts, PDFs, page sources). |
 | `.mnemonic/README.md` | by humans | mnemonic | User guide, regenerated on every `mn init`. |
 | `README.md` | by humans | user | Gets a short "Memory system" section linking the guide. |
 

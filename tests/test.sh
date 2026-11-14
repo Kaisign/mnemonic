@@ -166,6 +166,26 @@ sh "$MN" init >/dev/null
 t "existing agent settings merged" "grep -q 'Bash(ls)' .claude/settings.json && grep -q 'mn hook stop' .claude/settings.json"
 t "merge is idempotent" "sh '$MN' init >/dev/null && [ \$(grep -c 'mn hook stop' .claude/settings.json) -eq 1 ]"
 
+# 11. Everything in one repo: in-repo submonics, linked from another repo
+origin=$(mktemp -d)/proj.git; git init -q --bare -b main "$origin"
+new_repo; P=$d; git remote add origin "$origin"
+sh "$MN" init >/dev/null
+t "artifacts folder created" "[ -f artifacts/README.md ]"
+git add -A && git commit -qm init && git push -q -u origin HEAD:main 2>/dev/null
+t "self link" "sh .mnemonic/mn sub link infra self 'servers and domains'"
+t "self submonic committed" "git log -1 --format=%s | grep -q 'Create submonic infra' && [ -f shared/infra/INDEX.md ]"
+t "self add" "sh .mnemonic/mn sub add infra web01 'server ip nginx' 'Main VPS'"
+t "self find" "sh .mnemonic/mn sub find nginx | grep -q 'infra/web01'"
+echo "- webroot: /srv/site" >> shared/infra/web01.md
+t "self save without STATE.md passes hook" "sh .mnemonic/mn sub save infra 'Add webroot'"
+t "no cache for self" "[ ! -d .mnemonic/cache ]"
+git push -q origin HEAD:main 2>/dev/null
+new_repo
+sh "$MN" init >/dev/null
+t "other repo links in-repo submonic" "sh .mnemonic/mn sub link infra '$origin#shared/infra' 'servers'"
+t "other repo finds topic" "sh .mnemonic/mn sub find webroot nginx | grep -q 'infra/web01'"
+t "other repo reads edit" "sh .mnemonic/mn sub show infra/web01 | grep -q webroot"
+
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"

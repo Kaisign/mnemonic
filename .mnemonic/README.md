@@ -12,6 +12,8 @@ old conversations.
 | STATE.md | every session | Live state: Goal, Current, Next, Decisions, Blockers, Notes. Rewritten, never appended. Budget ~1500 tokens. |
 | memory/INDEX.md | when needed | One line per long-term topic: name, keywords, summary. Searched automatically when STATE.md lacks a fact. |
 | memory/<topic>.md | on demand | Long-term knowledge: architecture, old decisions, failed approaches, domain context. |
+| shared/<name>/ | when needed | Shared memory kept in this repository (submonics linked as `self`). |
+| artifacts/ | never | Generated deliverables: reports, charts, PDFs, page sources. |
 | .mnemonic/mn | never (run) | Helper CLI. |
 
 ## How a session works
@@ -43,12 +45,14 @@ e.g. "check memory about authentication".
 ```
 
 ## Shared memory (optional)
-Submonics are shared memories kept in another git repository (usually one
-private hub with a folder per submonic). Every linked session can read and
+Submonics are shared memories. By default they live in this repository under
+`shared/<name>/` (linked as `self`); other repositories link them as
+`owner/this-repo#shared/<name>`. A separate hub repository is also possible. Every linked session can read and
 write them; they are read only when needed. Linked submonics are listed in
 `.mnemonic/links` and summarized in AGENTS.md.
 ```
-.mnemonic/mn sub link infra owner/hub#infra "servers, domains"
+.mnemonic/mn sub link infra self "servers, domains"      in this repo
+.mnemonic/mn sub link infra owner/repo#shared/infra "…"  from another repo
 .mnemonic/mn sub find <words>         search all linked indexes
 .mnemonic/mn sub show infra/<topic>   read one topic
 .mnemonic/mn sub add infra <topic> "<keywords>" "<summary>"

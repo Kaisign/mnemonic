@@ -7,7 +7,21 @@ common preferences. It replaces messages between sessions: instead of asking
 another session, look it up.
 
 ## Layout
-Default: one hub repository, one folder per submonic.
+Default: inside the repository where mnemonic is installed, so everything
+lives in one repo:
+```
+my-project/
+  STATE.md  memory/      project memory
+  shared/infra/          submonic linked as `self`
+  shared/profile/
+  artifacts/             generated deliverables
+```
+`.mnemonic/links`: `infra = self | servers, domains`. Writes are commits in
+this repository (only the submonic folder), pushed with the normal work; the
+pre-commit hook does not require STATE.md for `shared/` changes. Sessions on
+other repositories link it as `owner/my-project#shared/infra`.
+
+Alternative: a separate hub repository, one folder per submonic.
 ```
 mnemonic-hub/
   README.md          generated on first use

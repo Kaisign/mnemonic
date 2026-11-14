@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.3.0"
+MN_VERSION="0.4.0"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -28,8 +28,9 @@ Usage:
   mn mem show <topic>      Print one topic file
   mn mem add <topic> "<keywords>" "<summary>"
                            Create a topic file and its index line
-  mn sub link <name> <owner/repo[#folder]|url> ["description"]
-                           Link a shared memory (submonic); creates it if missing
+  mn sub link <name> <self|owner/repo[#folder]|url> ["description"]
+                           Link a shared memory (submonic); creates it if missing.
+                           "self" keeps it in this repo under shared/<name>
   mn sub list | sync [name] | unlink <name>
   mn sub find <words>      Search the indexes of all linked submonics
   mn sub show <name>/<topic>
@@ -126,6 +127,8 @@ Before the final commit of a task or session:
 4. Run `.mnemonic/mn check`, fix warnings, commit STATE.md together with the work.
 Automation: the pre-commit hook rejects work commits without STATE.md or with check warnings; the turn-end hook asks for a STATE.md update after unreflected commits. Comply, do not bypass.
 
+Deliverables you generate (reports, charts, PDFs, page sources) go in artifacts/<topic>/.
+
 Style for STATE.md and memory: telegraphic, one line per item, `what -> why`, lists not tables, paths instead of descriptions, no emojis.
 EOF
   shared_section
@@ -183,6 +186,15 @@ Format: `- <topic>: <keywords> - <summary>` -> file memory/<topic>.md
 EOF
 }
 
+artifacts_readme() {
+  cat <<'EOF'
+# artifacts
+Generated deliverables: reports, charts, PDFs, page sources. One folder per
+topic (`artifacts/<topic>/`). Not loaded into agent context; link them from
+STATE.md or a memory topic when they matter. Keep secrets out.
+EOF
+}
+
 guide_text() {
   cat <<'EOF'
 # Memory system (mnemonic)
@@ -199,6 +211,8 @@ old conversations.
 | STATE.md | every session | Live state: Goal, Current, Next, Decisions, Blockers, Notes. Rewritten, never appended. Budget ~1500 tokens. |
 | memory/INDEX.md | when needed | One line per long-term topic: name, keywords, summary. Searched automatically when STATE.md lacks a fact. |
 | memory/<topic>.md | on demand | Long-term knowledge: architecture, old decisions, failed approaches, domain context. |
+| shared/<name>/ | when needed | Shared memory kept in this repository (submonics linked as `self`). |
+| artifacts/ | never | Generated deliverables: reports, charts, PDFs, page sources. |
 | .mnemonic/mn | never (run) | Helper CLI. |
 
 ## How a session works
@@ -230,12 +244,14 @@ e.g. "check memory about authentication".
 ```
 
 ## Shared memory (optional)
-Submonics are shared memories kept in another git repository (usually one
-private hub with a folder per submonic). Every linked session can read and
+Submonics are shared memories. By default they live in this repository under
+`shared/<name>/` (linked as `self`); other repositories link them as
+`owner/this-repo#shared/<name>`. A separate hub repository is also possible. Every linked session can read and
 write them; they are read only when needed. Linked submonics are listed in
 `.mnemonic/links` and summarized in AGENTS.md.
 ```
-.mnemonic/mn sub link infra owner/hub#infra "servers, domains"
+.mnemonic/mn sub link infra self "servers, domains"      in this repo
+.mnemonic/mn sub link infra owner/repo#shared/infra "…"  from another repo
 .mnemonic/mn sub find <words>         search all linked indexes
 .mnemonic/mn sub show infra/<topic>   read one topic
 .mnemonic/mn sub add infra <topic> "<keywords>" "<summary>"
@@ -375,6 +391,7 @@ cmd_init() {
 
   create_if_missing STATE.md state_template
   create_if_missing memory/INDEX.md index_template
+  mkdir -p artifacts; create_if_missing artifacts/README.md artifacts_readme
   guide_text > .mnemonic/README.md; echo "wrote    .mnemonic/README.md"
 
   if [ -f "$self" ] && [ "$(cd "$(dirname "$self")" && pwd)/$(basename "$self")" != "$(pwd)/.mnemonic/mn" ]; then
@@ -503,10 +520,28 @@ cache_of() { echo ".mnemonic/cache/$(printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_
 sub_names() { sed -n 's/^\([A-Za-z0-9._-]*\) *=.*/\1/p' .mnemonic/links 2>/dev/null; }
 
 sub_resolve() {
-  # sub_resolve <name>: sets S_URL S_REPO (cache) S_DIR (submonic dir)
+  # sub_resolve <name>: sets S_SELF S_URL S_REPO (clone or ".") S_DIR (submonic dir)
   spec=$(link_spec "$1"); [ -n "$spec" ] || die "unknown submonic: $1 (see mn sub list)"
-  S_URL=$(spec_url "$spec"); S_REPO=$(cache_of "$S_URL"); f=$(spec_folder "$spec")
-  S_DIR=$S_REPO${f:+/$f}
+  f=$(spec_folder "$spec")
+  case "$spec" in
+    self|self\#*) S_SELF=1; S_URL=""; S_REPO=.; S_DIR=shared/${f:-$1} ;;
+    *) S_SELF=0; S_URL=$(spec_url "$spec"); S_REPO=$(cache_of "$S_URL"); S_DIR=$S_REPO${f:+/$f} ;;
+  esac
+}
+
+sub_sync() { [ "$S_SELF" = 1 ] || sync_repo "$S_URL" "$S_REPO"; }
+sub_ready() { [ "$S_SELF" = 1 ] || [ -d "$S_REPO/.git" ]; }
+sub_commit() {
+  # sub_commit <message>: in-repo submonics commit only their folder (pushed with normal work);
+  # external ones commit and push the cache clone.
+  if [ "$S_SELF" = 1 ]; then
+    git add -- "$S_DIR"
+    if git diff --cached --quiet -- "$S_DIR"; then echo "nothing to save"; return 0; fi
+    git commit -q -m "$1" -- "$S_DIR" && echo "saved: $1 (commit in this repo; pushed with your next push)"
+  else
+    rel=${S_DIR#"$S_REPO"}; rel=${rel#/}
+    push_repo "$S_REPO" "$1" "${rel:-.}"
+  fi
 }
 
 remote_has_commits() { git -C "$1" ls-remote --heads origin 2>/dev/null | grep -q .; }
@@ -546,7 +581,7 @@ ensure_submonic() {
   [ -f "$S_DIR/INDEX.md" ] && return 0
   mkdir -p "$S_DIR"
   printf '# %s\nShared memory. Read only when needed; open only the matching topic.\nFormat: `- <topic>: <keywords> - <summary>` -> file <topic>.md\n\n' "$1" > "$S_DIR/INDEX.md"
-  if [ "$S_DIR" != "$S_REPO" ] && [ ! -f "$S_REPO/README.md" ]; then
+  if [ "$S_SELF" = 0 ] && [ "$S_DIR" != "$S_REPO" ] && [ ! -f "$S_REPO/README.md" ]; then
     cat > "$S_REPO/README.md" <<'EOF'
 # mnemonic hub
 Shared memory for coding agent sessions. Each folder is a submonic: an
@@ -555,7 +590,7 @@ may read and write; read on demand only. Never store secrets here, only where
 they are kept. Managed with `mn sub` (see the mnemonic docs).
 EOF
   fi
-  push_repo "$S_REPO" "Create submonic $1"
+  if [ "$S_SELF" = 1 ]; then sub_commit "Create submonic $1"; else push_repo "$S_REPO" "Create submonic $1"; fi
 }
 
 cmd_sub() {
@@ -568,7 +603,7 @@ cmd_sub() {
       [ -z "$(link_spec "$1")" ] || die "already linked: $1"
       mkdir -p .mnemonic
       printf '%s = %s | %s\n' "$1" "$2" "${3:-}" >> .mnemonic/links
-      sub_resolve "$1"; sync_repo "$S_URL" "$S_REPO"; ensure_submonic "$1"
+      sub_resolve "$1"; sub_sync; ensure_submonic "$1"
       render_agents; echo "linked $1 -> $2" ;;
     unlink)
       [ $# -eq 1 ] || die "usage: mn sub unlink <name>"
@@ -583,15 +618,15 @@ cmd_sub() {
         printf '%-12s %s (%s)\n' "$n" "$(link_spec "$n")" "$c"
       done ;;
     sync)
-      for n in ${1:-$(sub_names)}; do sub_resolve "$n"; sync_repo "$S_URL" "$S_REPO"; done
+      for n in ${1:-$(sub_names)}; do sub_resolve "$n"; sub_sync; done
       echo "synced" ;;
     find)
       [ $# -gt 0 ] || die "usage: mn sub find <words>"
       pat=$(printf '%s' "$*" | sed 's/[][\.*^$/]/\\&/g; s/  */|/g'); hit=1
       for n in $(sub_names); do
         sub_resolve "$n"
-        if [ ! -d "$S_REPO/.git" ]; then sync_repo "$S_URL" "$S_REPO"
-        elif [ -n "$(find "$S_REPO/.git/mn-synced" -mmin +1440 2>/dev/null)" ]; then
+        if ! sub_ready; then sub_sync
+        elif [ "$S_SELF" = 0 ] && [ -n "$(find "$S_REPO/.git/mn-synced" -mmin +1440 2>/dev/null)" ]; then
           echo "info $n cache older than 1 day (mn sub sync)"; fi
         [ -f "$S_DIR/INDEX.md" ] || continue
         m=$(grep -iE "^- .*($pat)" "$S_DIR/INDEX.md" || true)
@@ -601,7 +636,7 @@ cmd_sub() {
     show)
       [ $# -eq 1 ] || die "usage: mn sub show <name>/<topic>"
       sub_resolve "${1%%/*}"; t=${1#*/}
-      [ -d "$S_REPO/.git" ] || sync_repo "$S_URL" "$S_REPO"
+      sub_ready || sub_sync
       [ -f "$S_DIR/$t.md" ] || die "no topic: $1"
       cat "$S_DIR/$t.md" ;;
     path)
@@ -609,20 +644,19 @@ cmd_sub() {
       sub_resolve "$1"; echo "$S_DIR" ;;
     add)
       [ $# -eq 4 ] || die 'usage: mn sub add <name> <topic> "<keywords>" "<summary>"'
-      sub_resolve "$1"; sync_repo "$S_URL" "$S_REPO"; ensure_submonic "$1"
+      sub_resolve "$1"; sub_sync; ensure_submonic "$1"
       printf '%s' "$2" | grep -qE '^[A-Za-z0-9._-]+$' || die "topic must match [A-Za-z0-9._-]+"
       [ "$2" != INDEX ] && [ "$2" != README ] || die "reserved name: $2"
       grep -q "^- $2:" "$S_DIR/INDEX.md" && die "topic exists: $1/$2"
       printf -- '- %s: %s - %s\n' "$2" "$3" "$4" >> "$S_DIR/INDEX.md"
       [ -f "$S_DIR/$2.md" ] || printf '# %s\nkeywords: %s\nsummary: %s\nupdated: %s\n\n' "$2" "$3" "$4" "$(date +%Y-%m-%d)" > "$S_DIR/$2.md"
-      push_repo "$S_REPO" "Add $1/$2"
+      sub_commit "Add $1/$2"
       echo "edit $S_DIR/$2.md, then: mn sub save $1 \"<message>\"" ;;
     save)
       [ $# -ge 1 ] || die 'usage: mn sub save <name> ["message"]'
       sub_resolve "$1"
-      [ -d "$S_REPO/.git" ] || die "not synced: $1"
-      rel=${S_DIR#"$S_REPO"}; rel=${rel#/}
-      push_repo "$S_REPO" "${2:-Update $1}" "${rel:-.}" ;;
+      sub_ready || die "not synced: $1"
+      sub_commit "${2:-Update $1}" ;;
     *) die "unknown sub command: $sub" ;;
   esac
 }
@@ -654,7 +688,7 @@ gd=$(git rev-parse --git-dir)
 if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
 staged=$(git diff --cached --name-only)
 [ -n "$staged" ] || exit 0
-work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
+work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|shared/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
 if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
   echo "mnemonic: this commit changes work files but not STATE.md." >&2
   echo "Rewrite STATE.md (drop finished items, update Current/Next), git add STATE.md, commit again." >&2
@@ -722,7 +756,7 @@ cmd_hook() {
       # Turn end: save shared memory edits; require a STATE.md update after unreflected commits.
       input=$(cat 2>/dev/null || true)
       for n in $(sub_names); do
-        sub_resolve "$n"; [ -d "$S_REPO/.git" ] || continue
+        sub_resolve "$n"; [ "$S_SELF" = 0 ] && [ -d "$S_REPO/.git" ] || continue
         [ -n "$(git -C "$S_REPO" status --porcelain 2>/dev/null)" ] && { (push_repo "$S_REPO" "Update $n" >/dev/null 2>&1) || true; }
       done
       printf '%s' "$input" | grep -q '"stop_hook_active" *: *true' && exit 0

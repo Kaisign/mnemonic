@@ -7,7 +7,7 @@ gd=$(git rev-parse --git-dir)
 if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
 staged=$(git diff --cached --name-only)
 [ -n "$staged" ] || exit 0
-work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
+work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|shared/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
 if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
   echo "mnemonic: this commit changes work files but not STATE.md." >&2
   echo "Rewrite STATE.md (drop finished items, update Current/Next), git add STATE.md, commit again." >&2

@@ -5,15 +5,14 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.3.0: automation (git pre-commit, agent session hooks, mn archive, mn status), documented; 90 tests pass
+- v0.4.0: everything in one repo (shared/ submonics, artifacts/), automation hooks, auto memory lookup; 101 tests pass
 - v0.2.0 shared memory (mn sub) untested with a real hub
 - Real-data test (local only, no data in repo): replay -19% tokens, +2% USD in-session; resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with automatic memory lookup (11/14 before)
 
 ## Next
-1. User: create private owner/hub; allow attaching it to sessions
-2. Link infra submonic here; ask Sistemas to link it and record web01/DNS facts
-3. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
-4. Optional: benchmark at 50K+ history and with a larger model
+1. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
+2. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
+3. Optional: benchmark at 50K+ history and with a larger model
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
@@ -24,7 +23,7 @@ updated: 2026-11-14
 - No vendor names except required adapter filename -> user rule
 - mn in POSIX sh -> runs anywhere with git
 - Self-hosted nginx + Let's Encrypt, cron git pull every 5 min -> publish = push to main
-- Shared memory: one private hub, folder per submonic (repo per submonic optional); all sessions write, rebase on push
+- Shared memory default in-repo (shared/<name>, link 'self'); other repos link owner/repo#shared/<name>; separate hub optional
 - Long-term memory searched automatically when STATE.md lacks a fact -> real test missed 3/7 without it
 
 ## Blockers

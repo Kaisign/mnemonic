@@ -54,23 +54,29 @@ commits). Nothing else is needed from the user.
 Explain in a few lines, in `chat_lang`, then ask whether to enable it:
 - A shared memory ("submonic") is knowledge several sessions need: servers,
   domains, cross-repo decisions, common preferences.
-- It lives in a separate private git repository. Any linked session can
-  look things up and write new entries, so sessions stop asking each other.
+- By default it lives in this same repository (`shared/`); other sessions
+  and repositories link to it. Any linked session can look things up and
+  write new entries, so sessions stop asking each other.
 - It is read only when needed (index first, then one topic): zero cost
   otherwise. Never store secrets in it, only where they are kept.
 
 If enabled, ask:
-1. Layout: single hub repository with one folder per submonic
-   (recommended), or one repository per submonic.
-2. Repository: `owner/name` or git URL. It must exist (private, may be
-   empty) and be accessible from this session; if your environment attaches
-   repositories, attach it with push access.
+1. Layout:
+   - In this repository (recommended): everything stays in one repo, under
+     `shared/<name>/`. Other repositories can link it later as
+     `owner/this-repo#shared/<name>`.
+   - A separate hub repository with one folder per submonic.
+   - One repository per submonic.
+2. For a separate hub or repositories: `owner/name` or git URL. It must exist
+   (private, may be empty) and be accessible from this session; if your
+   environment attaches repositories, attach it with push access.
 3. Which submonics to link, each with a one-line description. Suggest
    `infra` (servers, domains, deployments) and `profile` (shared
    preferences); missing ones are created.
 
 Then, per submonic:
 ```
+.mnemonic/mn sub link <name> self "<description>"                  # this repo
 .mnemonic/mn sub link <name> <owner/repo>#<name> "<description>"   # hub
 .mnemonic/mn sub link <name> <owner/repo> "<description>"          # own repo
 ```
