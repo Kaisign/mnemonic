@@ -31,6 +31,7 @@ accept numbers. The first option is the recommended default.
 | `--priority` | Optimization priority | savings (fewest tokens), balanced, quality |
 | `--docs` | Documentation level | full (every mechanism, concise), minimal, none |
 | `--tone` | Answer tone | direct-humor, direct, formal |
+| `--enforce` | How strictly STATE.md updates are required | task (at task end; blocks after 3 commits without it), strict (every commit), off |
 
 Adapters: create the `claude` adapter (CLAUDE.md importing AGENTS.md and
 STATE.md). It is the only adapter supported for now; do not ask.

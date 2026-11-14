@@ -7,3 +7,4 @@ priority=savings
 docs=full
 tone=direct-humor
 agents=claude
+enforce=task

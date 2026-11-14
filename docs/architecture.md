@@ -16,7 +16,7 @@ choice is judged by tokens read per session.
 | `.mnemonic/mn` | executed, not read | mnemonic | CLI. See [cli.md](cli.md). |
 | `.mnemonic/config` | by `mn` | mnemonic | Saved preference choices; `mn init` starts from them. |
 | `.mnemonic/links` | by `mn` | mnemonic | Linked shared memories. See [shared.md](shared.md). |
-| `.mnemonic/cache/` | on request only | mnemonic (git-ignored) | Local clones of shared memory repositories. |
+| `.mnemonic/cache/` | on request only | mnemonic (git-ignored) | Clones of external shared memory, and `last-turn` (time of the last turn, for the cache-expiry advisor). |
 | `.mnemonic/hooks/pre-commit` | by git | mnemonic | Enforces STATE.md updates. See [automation.md](automation.md). |
 | `.claude/settings.json` | by the agent | user + mnemonic hooks | Adapter hooks: session start, turn end. |
 | `memory/archive/` | never | agent | Archived topics, out of the index. |

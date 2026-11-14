@@ -1,6 +1,6 @@
 # Results
 
-2026-11-14, mn 0.1.0, small-model subagents, 18 graded runs + 1 rerun.
+2026-11-14, mnemonic 0.0.1, small-model subagents, 18 graded runs + 1 rerun.
 Full report: [results/report.pdf](results/report.pdf) (also `report.html`),
 data: [results/results.csv](results/results.csv).
 

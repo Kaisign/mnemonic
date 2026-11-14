@@ -10,6 +10,7 @@
 - priority: minimize tokens; read only what is needed, short answers, no re-exploration
 - docs: document every mechanism; concise but complete
 - tone: direct, clear summaries, light humor welcome, say so when a question is trivial
+- state_updates: rewrite STATE.md when a task ends; hooks block after 3 commits without it
 
 ## Memory protocol
 Files:
@@ -27,7 +28,14 @@ Before the final commit of a task or session:
 2. Caps (lines): Goal 3, Current 5, Next 7, Decisions 10, Blockers 5, Notes 5. Prune the least relevant.
 3. Pruned but valuable knowledge: `.mnemonic/mn mem add <topic> "<keywords>" "<summary>"`, then write memory/<topic>.md.
 4. Run `.mnemonic/mn check`, fix warnings, commit STATE.md together with the work.
-Automation: the pre-commit hook rejects work commits without STATE.md or with check warnings; the turn-end hook asks for a STATE.md update after unreflected commits. Comply, do not bypass.
+Automation: hooks enforce state_updates (see Preferences) and reject STATE.md commits that fail mn check. Comply, do not bypass.
+
+## Session economy
+- Work in this session while the task lasts: its prompt cache is the cheapest context. No new sessions for subtasks.
+- Do not re-read files already in context; delegate heavy reading to subagents.
+- Compact only at a task boundary, right after updating STATE.md.
+- Record facts other sessions will need in shared memory as soon as you learn them.
+- After an idle gap over 1 h in a long conversation the prompt hook reports it: offer the user a fresh session from STATE.md.
 
 Deliverables you generate (reports, charts, PDFs, page sources) go in artifacts/<topic>/.
 

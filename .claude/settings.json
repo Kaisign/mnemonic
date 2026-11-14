@@ -1,6 +1,34 @@
 {
   "hooks": {
-    "SessionStart": [{"hooks": [{"type": "command", "command": "sh .mnemonic/mn hook start"}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "sh .mnemonic/mn hook stop"}]}]
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .mnemonic/mn hook start"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .mnemonic/mn hook stop"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh .mnemonic/mn hook prompt"
+          }
+        ]
+      }
+    ]
   }
 }

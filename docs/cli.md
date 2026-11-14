@@ -22,6 +22,7 @@ Installs or updates the system. Options and defaults:
 | `--docs` | full, minimal, none | full |
 | `--tone` | direct-humor, direct, formal | direct-humor |
 | `--agents` | comma list: claude | claude |
+| `--enforce` | task, strict, off | task |
 | `--dir` | path | repo root |
 
 Options are validated before anything is written. Choices are saved in
@@ -73,7 +74,7 @@ One-screen summary: preferences, STATE.md size, memory topics and archive,
 linked submonics, and whether the git and agent hooks are active. Printed at
 the end of `mn init`.
 
-### `mn hook start | stop | settings`
+### `mn hook start | prompt | stop | settings`
 Called by the agent hooks; see [automation.md](automation.md). `settings`
 prints the hook block for manual merging.
 
@@ -91,6 +92,9 @@ verifies the shebang and replaces `.mnemonic/mn`.
 | `MN_DIR` | repo root | Target directory |
 | `MN_STALE_DAYS` | 90 | Age after which `check` suggests archiving a topic |
 | `MN_SKIP` | unset | `1` bypasses the pre-commit hook for one commit |
+| `MN_TASK_COMMITS` | 3 | Task mode: work commits allowed without a STATE.md update |
+| `MN_CACHE_TTL` | 3600 | Idle seconds after which the prompt hook considers the cache expired |
+| `MN_RESUME_WARN` | 50000 | Estimated conversation tokens above which the advisor speaks |
 
 ## Tests
 `sh tests/test.sh` runs the suite in temporary repositories: fresh install,

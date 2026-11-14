@@ -134,9 +134,9 @@ t "unlink" "sh .mnemonic/mn sub unlink profile && ! grep -q '^- profile:' AGENTS
 t "unknown submonic rejected" "! sh .mnemonic/mn sub show nope/x"
 t "cache not tracked" "git add -A && ! git status --porcelain | grep -q cache"
 
-# 10. Automation: hooks, archive, status
+# 10. Automation: hooks, archive, status (strict mode)
 new_repo
-sh "$MN" init >/dev/null
+sh "$MN" init --enforce strict >/dev/null
 t "pre-commit hook installed" "[ -x .mnemonic/hooks/pre-commit ]"
 t "git hooks enabled" "[ \"\$(git config core.hooksPath)\" = .mnemonic/hooks ]"
 t "agent settings created" "grep -q 'mn hook start' .claude/settings.json && grep -q 'mn hook stop' .claude/settings.json"
@@ -159,7 +159,7 @@ sh .mnemonic/mn mem add old 'legacy' 'Old notes' >/dev/null; sed -i 's/^updated:
 t "stale topic reported" "sh .mnemonic/mn check | grep -q 'topic old not updated since 2020-01-01'"
 t "archive" "sh .mnemonic/mn archive old"
 t "archived file kept" "[ -f memory/archive/old.md ] && ! grep -q '^- old:' memory/INDEX.md"
-t "status summary" "sh .mnemonic/mn status | grep -q 'automation:  git pre-commit on, agent session hooks on'"
+t "status summary" "sh .mnemonic/mn status | grep -q 'automation:  git pre-commit on (strict mode), agent session hooks on'"
 new_repo
 mkdir .claude; echo '{"permissions": {"allow": ["Bash(ls)"]}}' > .claude/settings.json
 sh "$MN" init >/dev/null
@@ -185,6 +185,41 @@ sh "$MN" init >/dev/null
 t "other repo links in-repo submonic" "sh .mnemonic/mn sub link infra '$origin#shared/infra' 'servers'"
 t "other repo finds topic" "sh .mnemonic/mn sub find webroot nginx | grep -q 'infra/web01'"
 t "other repo reads edit" "sh .mnemonic/mn sub show infra/web01 | grep -q webroot"
+
+# 12. Task mode (default), off mode, cache-expiry prompt hook, economy rules
+new_repo
+sh "$MN" init >/dev/null
+t "default enforce is task" "grep -qx 'enforce=task' .mnemonic/config && grep -q '^- state_updates: rewrite STATE.md when a task ends' AGENTS.md"
+t "economy rules in protocol" "grep -q '^## Session economy' AGENTS.md"
+t "prompt hook installed" "grep -q 'mn hook prompt' .claude/settings.json"
+git add -A && git commit -qm init
+echo 1 > a.txt; git add a.txt
+t "task: 1st work commit allowed" "git commit -qm w1"
+echo 2 > a.txt; git add a.txt
+t "task: 2nd work commit allowed" "git commit -qm w2"
+t "task: stop hook quiet below limit" "[ -z \"\$(echo '{}' | sh .mnemonic/mn hook stop)\" ]"
+echo 3 > a.txt; git add a.txt
+t "task: 3rd work commit blocked" "! git commit -qm w3"
+sed -i 's/^updated: .*/updated: 2026-02-02/' STATE.md; git add STATE.md a.txt
+t "task: commit with STATE.md resets" "git commit -qm w3s"
+MN_SKIP=1 git commit -q --allow-empty -m e1; MN_SKIP=1 git commit -q --allow-empty -m e2; MN_SKIP=1 git commit -q --allow-empty -m e3
+t "task: stop hook blocks at limit" "echo '{}' | sh .mnemonic/mn hook stop | grep -q 'decision'"
+t "last-turn recorded" "[ -f .mnemonic/cache/last-turn ]"
+big=$(mktemp); head -c 600000 /dev/zero | tr '\0' 'x' > "$big"
+echo $(( $(date +%s) - 7200 )) > .mnemonic/cache/last-turn
+t "prompt hook warns after idle gap" "echo '{\"transcript_path\": \"'$big'\"}' | sh .mnemonic/mn hook prompt | grep -q 'prompt cache has expired'"
+t "prompt hook warns once per gap" "[ -z \"\$(echo '{\"transcript_path\": \"'$big'\"}' | sh .mnemonic/mn hook prompt)\" ]"
+small=$(mktemp); echo x > "$small"; echo $(( $(date +%s) - 7200 )) > .mnemonic/cache/last-turn
+t "prompt hook quiet for short conversations" "[ -z \"\$(echo '{\"transcript_path\": \"'$small'\"}' | sh .mnemonic/mn hook prompt)\" ]"
+date +%s > .mnemonic/cache/last-turn
+t "prompt hook quiet when recent" "[ -z \"\$(echo '{\"transcript_path\": \"'$big'\"}' | sh .mnemonic/mn hook prompt)\" ]"
+sh "$MN" init --enforce off >/dev/null
+for i in 1 2 3 4; do echo $i > b.txt; git add b.txt; git commit -qm "o$i" || break; done
+t "off: never blocks" "[ \$(git log --format=%s | grep -c '^o') -eq 4 ]"
+t "invalid enforce rejected" "! sh '$MN' init --enforce maybe"
+new_repo; mkdir .claude; echo '{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "sh .mnemonic/mn hook stop"}]}]}}' > .claude/settings.json
+sh "$MN" init >/dev/null
+t "upgrade adds missing hook events only" "grep -q 'mn hook prompt' .claude/settings.json && [ \$(grep -c 'mn hook stop' .claude/settings.json) -eq 1 ]"
 
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"

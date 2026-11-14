@@ -65,6 +65,7 @@ mn update              fetch the latest mn
 - [CLI](docs/cli.md): commands, options, environment, tests
 - [Installer and hosting](docs/installer.md): bootstrap flow, server
 - [Savings](docs/savings.md): estimates and assumptions
+- [Changelog](CHANGELOG.md): versions
 - [Benchmark](tests/bench/README.md): measured results in [tests/bench/RESULTS.md](tests/bench/RESULTS.md)
 
 ## Repository layout

@@ -1,18 +1,30 @@
 #!/bin/sh
-# mnemonic pre-commit: work commits must carry an updated STATE.md and pass mn check.
-# Bypass once: MN_SKIP=1 git commit ...
+# mnemonic pre-commit. Modes (enforce= in .mnemonic/config):
+#   task (default): block after MN_TASK_COMMITS (3) work commits without a STATE.md update
+#   strict: every work commit must include STATE.md;  off: never require it
+# Always runs mn check when STATE.md is staged. Bypass once: MN_SKIP=1 git commit ...
 [ "${MN_SKIP:-}" = 1 ] && exit 0
 cd "$(git rev-parse --show-toplevel)" || exit 0
 gd=$(git rev-parse --git-dir)
 if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
 staged=$(git diff --cached --name-only)
 [ -n "$staged" ] || exit 0
+mode=$(sed -n 's/^enforce=//p' .mnemonic/config 2>/dev/null); mode=${mode:-task}
 work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|shared/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
 if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
-  echo "mnemonic: this commit changes work files but not STATE.md." >&2
-  echo "Rewrite STATE.md (drop finished items, update Current/Next), git add STATE.md, commit again." >&2
-  exit 1
+  last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
+  behind=0; [ -n "$last" ] && behind=$(git rev-list --count "$last..HEAD")
+  n=$((behind + 1)); max=${MN_TASK_COMMITS:-3}
+  case "$mode" in
+    strict) echo "mnemonic: this commit changes work files but not STATE.md (strict mode)." >&2
+            echo "Rewrite STATE.md, git add STATE.md, commit again." >&2; exit 1 ;;
+    task)   if [ "$n" -ge "$max" ]; then
+              echo "mnemonic: $n work commits without updating STATE.md (limit $max)." >&2
+              echo "Rewrite STATE.md (finished items out, Current/Next updated), git add STATE.md, commit again." >&2; exit 1
+            fi ;;
+  esac
 fi
-[ -f .mnemonic/mn ] || exit 0
-out=$(sh .mnemonic/mn check --pre-commit 2>&1) || { printf '%s\n' "$out" | grep -v '^ok ' >&2; echo "mnemonic: fix the warnings above, then commit again." >&2; exit 1; }
+if printf '%s\n' "$staged" | grep -qx 'STATE.md' && [ -f .mnemonic/mn ]; then
+  out=$(sh .mnemonic/mn check --pre-commit 2>&1) || { printf '%s\n' "$out" | grep -v '^ok ' >&2; echo "mnemonic: fix the warnings above, then commit again." >&2; exit 1; }
+fi
 exit 0

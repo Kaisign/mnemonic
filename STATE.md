@@ -5,9 +5,9 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.4.0: everything in one repo (shared/ submonics, artifacts/), automation hooks, auto memory lookup; 101 tests pass
-- v0.2.0 shared memory (mn sub) untested with a real hub
-- Real-data test (local only, no data in repo): replay -19% tokens, +2% USD in-session; resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with automatic memory lookup (11/14 before)
+- v0.0.2: enforce modes (task default), cache-expiry advisor, session economy rules; 118 tests pass
+- v0.0.1 tagged locally; tags cannot be pushed from this environment (proxy 403)
+- Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
 
 ## Next
 1. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
@@ -17,14 +17,14 @@ updated: 2026-11-14
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
 - Long-term memory on demand via memory/INDEX.md -> zero cost when unused
-- Preferences inside AGENTS.md -> no extra read
-- CLAUDE.md imports AGENTS.md + STATE.md -> loaded at start, no tool call
+- Prefs + protocol in AGENTS.md; CLAUDE.md imports AGENTS.md + STATE.md -> loaded at start, no extra reads
 - Telegraphic English, lists not tables -> fewest tokens, still human-readable
 - No vendor names except required adapter filename -> user rule
 - mn in POSIX sh -> runs anywhere with git
 - Self-hosted nginx + Let's Encrypt, cron git pull every 5 min -> publish = push to main
 - Shared memory default in-repo (shared/<name>, link 'self'); other repos link owner/repo#shared/<name>; separate hub optional
 - Long-term memory searched automatically when STATE.md lacks a fact -> real test missed 3/7 without it
+- Session cache first, mnemonic at task ends/sharing/idle gaps -> cache reads cheapest; enforce=task
 
 ## Blockers
 - Only claude adapter supported for now
