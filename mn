@@ -1,0 +1,408 @@
+#!/bin/sh
+# mn - mnemonic CLI: persistent, token-cheap memory for coding agents.
+# POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
+set -eu
+
+MN_VERSION="0.1.0"
+MN_URL="${MN_URL:-https://<own-domain>}"
+MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
+BEGIN_MARK="<!-- mnemonic:begin -->"
+END_MARK="<!-- mnemonic:end -->"
+
+die() { printf 'mn: %s\n' "$*" >&2; exit 2; }
+
+root_dir() {
+  if [ -n "${MN_DIR:-}" ]; then printf '%s\n' "$MN_DIR"; return; fi
+  git rev-parse --show-toplevel 2>/dev/null || pwd
+}
+
+usage() {
+  cat <<'EOF'
+mn - persistent memory for coding agents
+
+Usage:
+  mn init [options]        Install or update the system in the current repo
+  mn check                 Validate STATE.md and memory (size, caps, staleness)
+  mn mem list              Print the long-term memory index
+  mn mem find <words>      Search the index (does not open topic files)
+  mn mem show <topic>      Print one topic file
+  mn mem add <topic> "<keywords>" "<summary>"
+                           Create a topic file and its index line
+  mn update                Replace .mnemonic/mn with the latest published version
+  mn version | help
+
+init options (defaults in brackets):
+  --chat-lang <lang>       Language used to talk to the user [en]
+  --work-lang <lang>       Language for files, code, commits, docs [en]
+  --commits <mode>         grouped | atomic | manual [grouped]
+  --brand-refs <mode>      none | allowed [none]
+  --code <mode>            on-request | proactive [on-request]
+  --priority <mode>        savings | balanced | quality [savings]
+  --docs <mode>            full | minimal | none [full]
+  --tone <mode>            direct-humor | direct | formal [direct-humor]
+  --agents <list>          Comma list of adapters to create: claude [claude]
+  --dir <path>             Target repo root [git toplevel or cwd]
+
+Environment: MN_MAX_TOKENS (STATE.md budget, default 1500), MN_URL.
+EOF
+}
+
+# ---------- preference text ----------
+
+pref_lines() {
+  printf -- '- chat_lang: %s\n' "$P_CHAT"
+  printf -- '- work_lang: %s (files, code, commits, docs)\n' "$P_WORK"
+  case "$P_COMMITS" in
+    grouped) echo "- commits: one per major change, minor changes grouped, simple messages" ;;
+    atomic)  echo "- commits: one per logical change, simple messages" ;;
+    manual)  echo "- commits: only when the user asks" ;;
+    *) die "invalid --commits: $P_COMMITS" ;;
+  esac
+  case "$P_BRAND" in
+    none)    echo "- brand_refs: no AI tool or vendor names in git history, code or docs (required adapter filenames excepted); no co-author trailers" ;;
+    allowed) echo "- brand_refs: allowed" ;;
+    *) die "invalid --brand-refs: $P_BRAND" ;;
+  esac
+  case "$P_CODE" in
+    on-request) echo "- code: write or change code only when the user asks; otherwise discuss and design" ;;
+    proactive)  echo "- code: implement directly when the intent is clear" ;;
+    *) die "invalid --code: $P_CODE" ;;
+  esac
+  case "$P_PRIORITY" in
+    savings)  echo "- priority: minimize tokens; read only what is needed, short answers, no re-exploration" ;;
+    balanced) echo "- priority: balance token cost and thoroughness" ;;
+    quality)  echo "- priority: thoroughness over token cost" ;;
+    *) die "invalid --priority: $P_PRIORITY" ;;
+  esac
+  case "$P_DOCS" in
+    full)    echo "- docs: document every mechanism; concise but complete" ;;
+    minimal) echo "- docs: README-level usage only" ;;
+    none)    echo "- docs: only when asked" ;;
+    *) die "invalid --docs: $P_DOCS" ;;
+  esac
+  case "$P_TONE" in
+    direct-humor) echo "- tone: direct, clear summaries, light humor welcome, say so when a question is trivial" ;;
+    direct)       echo "- tone: direct, clear summaries, no filler" ;;
+    formal)       echo "- tone: formal and neutral" ;;
+    *) die "invalid --tone: $P_TONE" ;;
+  esac
+}
+
+agents_block() {
+  echo "$BEGIN_MARK"
+  echo "## Preferences"
+  pref_lines
+  cat <<'EOF'
+
+## Memory protocol
+Files:
+- STATE.md: live project state. Loaded every session. Budget ~1500 tokens.
+- memory/INDEX.md + memory/<topic>.md: long-term memory. Do NOT read unless the user asks. Then read INDEX.md (or run `.mnemonic/mn mem find <words>`) and open only the needed topic.
+- .mnemonic/mn: helper CLI (`.mnemonic/mn help`). Guide: .mnemonic/README.md.
+
+Session start:
+1. If STATE.md is not already in context, read it. Nothing else by default.
+2. If it may be outdated, run `.mnemonic/mn check` (reports commits since the last STATE.md update).
+3. Do not re-explore what STATE.md answers. Do not reopen recorded decisions without new facts.
+
+Before the final commit of a task or session:
+1. Rewrite STATE.md; never append. Drop finished items: git log is the history.
+2. Caps (lines): Goal 3, Current 5, Next 7, Decisions 10, Blockers 5, Notes 5. Prune the least relevant.
+3. Pruned but valuable knowledge: `.mnemonic/mn mem add <topic> "<keywords>" "<summary>"`, then write memory/<topic>.md.
+4. Run `.mnemonic/mn check`, fix warnings, commit STATE.md together with the work.
+
+Style for STATE.md and memory: telegraphic, one line per item, `what -> why`, lists not tables, paths instead of descriptions, no emojis.
+EOF
+  echo "$END_MARK"
+}
+
+# ---------- templates ----------
+
+state_template() {
+  cat <<EOF
+# STATE
+updated: $(date +%Y-%m-%d)
+
+## Goal
+- (one to three lines: what this project is for)
+
+## Current
+- (work in progress and where it stands)
+
+## Next
+1. (next steps, in order)
+
+## Decisions
+- (decision -> reason)
+
+## Blockers
+- (open questions, failures to avoid)
+
+## Notes
+- (short facts worth keeping)
+EOF
+}
+
+index_template() {
+  cat <<'EOF'
+# Memory index
+Long-term memory. Read only when the user asks; then open only the matching topic.
+Format: `- <topic>: <keywords> - <summary>` -> file memory/<topic>.md
+
+EOF
+}
+
+guide_text() {
+  cat <<'EOF'
+# Memory system (mnemonic)
+
+This repository keeps its working memory in git so that any session can resume
+work by reading a few small files instead of re-exploring the code or replaying
+old conversations.
+
+## Files
+| File | Loaded | Purpose |
+|---|---|---|
+| AGENTS.md | every session | Preferences and the memory protocol, between `mnemonic:begin/end` markers. Content outside the markers is yours. |
+| CLAUDE.md | every session | Adapter for agents that do not read AGENTS.md natively. It only imports `@AGENTS.md` and `@STATE.md`, so both load at start without extra reads. |
+| STATE.md | every session | Live state: Goal, Current, Next, Decisions, Blockers, Notes. Rewritten, never appended. Budget ~1500 tokens. |
+| memory/INDEX.md | on demand | One line per long-term topic: name, keywords, summary. |
+| memory/<topic>.md | on demand | Long-term knowledge: architecture, old decisions, failed approaches, domain context. |
+| .mnemonic/mn | never (run) | Helper CLI. |
+
+## How a session works
+1. Start: AGENTS.md and STATE.md are already in context. The agent works from
+   STATE.md and does not re-explore what it already answers.
+2. Work: as usual. Recorded decisions are not reopened without new facts.
+3. Close: the agent rewrites STATE.md (finished items removed, caps respected),
+   moves valuable pruned knowledge to long-term memory, runs `mn check` and
+   commits STATE.md with the work.
+
+History lives in `git log`; STATE.md only describes the present and the next
+steps, so its size, and its cost per session, stays constant.
+
+## Using long-term memory
+It is never read automatically. Ask for it explicitly, e.g.
+"check memory about authentication". The agent then reads only the index (or
+runs `mn mem find`) and opens the single matching topic file.
+
+## Commands
+```
+.mnemonic/mn check                  validate size, caps, staleness, index
+.mnemonic/mn mem list               show the index
+.mnemonic/mn mem find <words>       search the index
+.mnemonic/mn mem show <topic>       print one topic
+.mnemonic/mn mem add <topic> "<keywords>" "<summary>"
+.mnemonic/mn init [options]         re-run to change preferences
+.mnemonic/mn update                 fetch the latest mn
+```
+
+## Changing preferences
+Edit the Preferences list in AGENTS.md, or re-run `mn init` with new options
+(`.mnemonic/mn help`). Re-running only replaces the marked block; STATE.md and
+memory are never overwritten.
+
+## Uninstall
+Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md and
+the two import lines in CLAUDE.md.
+EOF
+}
+
+# ---------- init ----------
+
+write_block() {
+  # Insert or replace the marked block in $1 with the content of file $2.
+  target=$1 block=$2
+  if [ ! -f "$target" ]; then
+    { echo "# AGENTS.md"; echo; cat "$block"; } > "$target"
+    echo "created  $target"
+  elif grep -qF "$BEGIN_MARK" "$target"; then
+    awk -v b="$BEGIN_MARK" -v e="$END_MARK" -v f="$block" '
+      $0==b { while ((getline l < f) > 0) print l; skip=1; next }
+      $0==e { skip=0; next }
+      !skip { print }' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
+    echo "updated  $target (marked block)"
+  else
+    { echo; cat "$block"; } >> "$target"
+    echo "appended $target (marked block)"
+  fi
+}
+
+ensure_line() {
+  # Append line $2 to file $1 if missing.
+  grep -qxF "$2" "$1" 2>/dev/null || printf '%s\n' "$2" >> "$1"
+}
+
+create_if_missing() {
+  # create_if_missing <file> <generator function>
+  if [ -e "$1" ]; then echo "kept     $1"; else "$2" > "$1"; echo "created  $1"; fi
+}
+
+cmd_init() {
+  P_CHAT=en P_WORK=en P_COMMITS=grouped P_BRAND=none P_CODE=on-request
+  P_PRIORITY=savings P_DOCS=full P_TONE=direct-humor P_AGENTS=claude
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || die "missing value for $1"
+    case "$1" in
+      --chat-lang)  P_CHAT=$2 ;;
+      --work-lang)  P_WORK=$2 ;;
+      --commits)    P_COMMITS=$2 ;;
+      --brand-refs) P_BRAND=$2 ;;
+      --code)       P_CODE=$2 ;;
+      --priority)   P_PRIORITY=$2 ;;
+      --docs)       P_DOCS=$2 ;;
+      --tone)       P_TONE=$2 ;;
+      --agents)     P_AGENTS=$2 ;;
+      --dir)        MN_DIR=$2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+    shift 2
+  done
+  d=$(root_dir); [ -d "$d" ] || die "no such directory: $d"
+  self=$0
+  cd "$d"
+
+  tmp=$(mktemp); agents_block > "$tmp"   # validates options before writing
+  mkdir -p .mnemonic memory
+  write_block AGENTS.md "$tmp"; rm -f "$tmp"
+
+  old_ifs=$IFS; IFS=,
+  for a in $P_AGENTS; do
+    case "$a" in
+      claude)
+        [ -f CLAUDE.md ] && s="updated " || s="created "
+        ensure_line CLAUDE.md "@AGENTS.md"; ensure_line CLAUDE.md "@STATE.md"
+        echo "$s CLAUDE.md" ;;
+      "") ;;
+      *) IFS=$old_ifs; die "unsupported agent: $a" ;;
+    esac
+  done
+  IFS=$old_ifs
+
+  create_if_missing STATE.md state_template
+  create_if_missing memory/INDEX.md index_template
+  guide_text > .mnemonic/README.md; echo "wrote    .mnemonic/README.md"
+
+  if [ -f "$self" ] && [ "$(cd "$(dirname "$self")" && pwd)/$(basename "$self")" != "$(pwd)/.mnemonic/mn" ]; then
+    cp "$self" .mnemonic/mn
+  fi
+  [ -f .mnemonic/mn ] && chmod +x .mnemonic/mn && echo "wrote    .mnemonic/mn"
+
+  readme_note="## Memory system
+This repository uses mnemonic, a git-based memory for coding agents. See [.mnemonic/README.md](.mnemonic/README.md)."
+  if [ ! -f README.md ]; then
+    printf '# %s\n\n%s\n' "$(basename "$(pwd)")" "$readme_note" > README.md
+    echo "created  README.md"
+  elif ! grep -qF ".mnemonic/README.md" README.md; then
+    printf '\n%s\n' "$readme_note" >> README.md
+    echo "appended README.md (memory section)"
+  else
+    echo "kept     README.md"
+  fi
+  echo "done. Next: fill STATE.md, then commit."
+}
+
+# ---------- check ----------
+
+cmd_check() {
+  cd "$(root_dir)"
+  warn=0
+  w() { printf 'WARN %s\n' "$*"; warn=$((warn + 1)); }
+  [ -f STATE.md ] || { echo "FAIL STATE.md missing (run mn init)"; exit 1; }
+
+  chars=$(wc -c < STATE.md | tr -d ' ')
+  tokens=$((chars / 4))
+  if [ "$tokens" -gt "$MN_MAX_TOKENS" ]; then w "STATE.md ~${tokens} tokens > ${MN_MAX_TOKENS}: prune"
+  else echo "ok   STATE.md ~${tokens}/${MN_MAX_TOKENS} tokens"; fi
+
+  caps=$(awk '
+    BEGIN { cap["Goal"]=3; cap["Current"]=5; cap["Next"]=7; cap["Decisions"]=10; cap["Blockers"]=5; cap["Notes"]=5 }
+    /^## / { sec=substr($0,4); next }
+    sec!="" && /^[ \t]*([-*]|[0-9]+\.)[ \t]/ { n[sec]++ }
+    END { for (s in cap) if (n[s] > cap[s]) printf "WARN section %s has %d items > %d\n", s, n[s], cap[s] }' STATE.md)
+  if [ -n "$caps" ]; then
+    printf '%s\n' "$caps"; warn=$((warn + $(printf '%s\n' "$caps" | wc -l)))
+  else echo "ok   section caps"; fi
+  for s in Goal Current Next Decisions Blockers Notes; do
+    grep -q "^## $s\$" STATE.md || w "STATE.md missing section: $s"
+  done
+
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
+    if [ -z "$last" ]; then w "STATE.md never committed"
+    else
+      behind=$(git rev-list --count "$last..HEAD")
+      if [ "$behind" -gt 0 ]; then w "STATE.md not updated in the last $behind commit(s): verify with git log --oneline -$behind"
+      else echo "ok   STATE.md up to date with HEAD"; fi
+    fi
+    git diff --quiet HEAD -- STATE.md 2>/dev/null || echo "info STATE.md has uncommitted changes"
+  fi
+
+  if [ -f memory/INDEX.md ]; then
+    topics=$(sed -n 's/^- \([A-Za-z0-9._-]*\):.*/\1/p' memory/INDEX.md)
+    for t in $topics; do [ -f "memory/$t.md" ] || w "index entry without file: memory/$t.md"; done
+    for f in memory/*.md; do
+      [ -f "$f" ] || continue
+      t=$(basename "$f" .md); [ "$t" = INDEX ] && continue
+      printf '%s\n' "$topics" | grep -qxF "$t" || w "topic not in index: $f"
+    done
+    echo "ok   memory index checked ($(printf '%s' "$topics" | grep -c . || true) topics)"
+  else
+    w "memory/INDEX.md missing"
+  fi
+
+  [ "$warn" -eq 0 ] && echo "all checks passed" || { echo "$warn warning(s)"; exit 1; }
+}
+
+# ---------- memory ----------
+
+cmd_mem() {
+  cd "$(root_dir)"
+  [ -f memory/INDEX.md ] || die "memory/INDEX.md missing (run mn init)"
+  sub=${1:-list}; [ $# -gt 0 ] && shift
+  case "$sub" in
+    list) grep '^- ' memory/INDEX.md || echo "(no topics)" ;;
+    find)
+      [ $# -gt 0 ] || die "usage: mn mem find <words>"
+      pat=$(printf '%s' "$*" | sed 's/[][\.*^$/]/\\&/g; s/  */|/g')
+      grep -iE "^- .*($pat)" memory/INDEX.md || { echo "(no match)"; exit 1; } ;;
+    show)
+      [ $# -eq 1 ] || die "usage: mn mem show <topic>"
+      [ -f "memory/$1.md" ] || die "no topic: $1"
+      cat "memory/$1.md" ;;
+    add)
+      [ $# -eq 3 ] || die 'usage: mn mem add <topic> "<keywords>" "<summary>"'
+      printf '%s' "$1" | grep -qE '^[A-Za-z0-9._-]+$' || die "topic must match [A-Za-z0-9._-]+"
+      [ "$1" != INDEX ] || die "reserved name: INDEX"
+      grep -q "^- $1:" memory/INDEX.md && die "topic exists: $1"
+      printf -- '- %s: %s - %s\n' "$1" "$2" "$3" >> memory/INDEX.md
+      [ -f "memory/$1.md" ] || printf '# %s\nkeywords: %s\nsummary: %s\nupdated: %s\n\n' "$1" "$2" "$3" "$(date +%Y-%m-%d)" > "memory/$1.md"
+      echo "added memory/$1.md" ;;
+    *) die "unknown mem command: $sub" ;;
+  esac
+}
+
+# ---------- update ----------
+
+cmd_update() {
+  cd "$(root_dir)"
+  mkdir -p .mnemonic
+  tmp=$(mktemp)
+  if command -v curl >/dev/null 2>&1; then curl -fsSL "$MN_URL/mn" -o "$tmp"
+  elif command -v wget >/dev/null 2>&1; then wget -qO "$tmp" "$MN_URL/mn"
+  else rm -f "$tmp"; die "curl or wget required"; fi
+  head -1 "$tmp" | grep -q '^#!/bin/sh' || { rm -f "$tmp"; die "download is not an mn script"; }
+  mv "$tmp" .mnemonic/mn && chmod +x .mnemonic/mn
+  echo "updated .mnemonic/mn to $(sh .mnemonic/mn version)"
+}
+
+cmd=${1:-help}; [ $# -gt 0 ] && shift
+case "$cmd" in
+  init)    cmd_init "$@" ;;
+  check)   cmd_check ;;
+  mem)     cmd_mem "$@" ;;
+  update)  cmd_update ;;
+  version) echo "$MN_VERSION" ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac
