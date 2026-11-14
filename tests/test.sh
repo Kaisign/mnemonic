@@ -93,6 +93,12 @@ t "re-init without flags keeps prefs" "grep -q '^- chat_lang: es' AGENTS.md && g
 t "config saved" "grep -qx 'chat_lang=es' .mnemonic/config"
 t "cache ignored by git" "grep -qx '.mnemonic/cache/' .gitignore"
 
+# 7b. Migration from installs without config
+new_repo
+sh "$MN" init --chat-lang es >/dev/null; rm .mnemonic/config
+sh "$MN" init >/dev/null
+t "languages recovered without config" "grep -q '^- chat_lang: es' AGENTS.md"
+
 # 8. Shared memory: two sessions in different repos, one hub
 hub=$(mktemp -d)/hub.git; git init -q --bare -b main "$hub"
 new_repo; A=$d

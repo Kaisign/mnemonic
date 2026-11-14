@@ -41,11 +41,27 @@ runs `mn mem find`) and opens the single matching topic file.
 .mnemonic/mn update                 fetch the latest mn
 ```
 
+## Shared memory (optional)
+Submonics are shared memories kept in another git repository (usually one
+private hub with a folder per submonic). Every linked session can read and
+write them; they are read only when needed. Linked submonics are listed in
+`.mnemonic/links` and summarized in AGENTS.md.
+```
+.mnemonic/mn sub link infra owner/hub#infra "servers, domains"
+.mnemonic/mn sub find <words>         search all linked indexes
+.mnemonic/mn sub show infra/<topic>   read one topic
+.mnemonic/mn sub add infra <topic> "<keywords>" "<summary>"
+.mnemonic/mn sub save infra "<message>"   after editing in $(mn sub path infra)
+```
+Never store secrets in shared memory; only where they are kept.
+
 ## Changing preferences
-Edit the Preferences list in AGENTS.md, or re-run `mn init` with new options
-(`.mnemonic/mn help`). Re-running only replaces the marked block; STATE.md and
+Edit the Preferences list in AGENTS.md, or re-run `mn init` with only the
+options that change (`.mnemonic/mn help`); other choices are kept from
+`.mnemonic/config`. Re-running only replaces the marked block; STATE.md and
 memory are never overwritten.
 
 ## Uninstall
-Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md and
-the two import lines in CLAUDE.md.
+Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md,
+the two import lines in CLAUDE.md and the `.mnemonic/cache/` line in
+.gitignore. Shared memory repositories are not touched.

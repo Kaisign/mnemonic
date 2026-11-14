@@ -14,6 +14,9 @@ choice is judged by tokens read per session.
 | `memory/INDEX.md` | on request only | agent | Long-term memory index. See [memory.md](memory.md). |
 | `memory/<topic>.md` | on request only | agent | Long-term knowledge, one topic per file. |
 | `.mnemonic/mn` | executed, not read | mnemonic | CLI. See [cli.md](cli.md). |
+| `.mnemonic/config` | by `mn` | mnemonic | Saved preference choices; `mn init` starts from them. |
+| `.mnemonic/links` | by `mn` | mnemonic | Linked shared memories. See [shared.md](shared.md). |
+| `.mnemonic/cache/` | on request only | mnemonic (git-ignored) | Local clones of shared memory repositories. |
 | `.mnemonic/README.md` | by humans | mnemonic | User guide, regenerated on every `mn init`. |
 | `README.md` | by humans | user | Gets a short "Memory system" section linking the guide. |
 
@@ -24,7 +27,8 @@ choice is judged by tokens read per session.
   expanded when the session starts, so AGENTS.md and STATE.md are in context
   from the first turn with no tool call. Without imports, the protocol tells
   the agent to read STATE.md itself (one extra read).
-- Long-term memory is never imported. Its cost is zero until the user asks.
+- Long-term and shared memory are never imported. Their cost is zero until
+  used; only one line per linked submonic appears in AGENTS.md.
 
 ## Why one STATE.md and no history file
 - Everything loaded every session must have a fixed size, or its cost grows

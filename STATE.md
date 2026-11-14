@@ -5,13 +5,15 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
+- v0.2.0: shared memory (mn sub), persistent prefs (.mnemonic/config), installer step 4; 72 tests pass; not published to a real hub yet
 - v0.1.0 published (/, /install.md, /mn); install untested in a real session
-- Benchmark tests/bench (18 runs, 3 lengths): savings 1%/9%/26% at 0.7K/5K/15K history; 96/96 correct; charts + PDF in tests/bench/results
+- Benchmark tests/bench: savings 1%/9%/26% at 0.7K/5K/15K history; 96/96 correct; report in tests/bench/results
 
 ## Next
-1. Test install in <owner>/test-repo from a fresh session
-2. Optional: benchmark at 50K+ history and with a larger model
-3. Continuity test: second session resumes from STATE.md
+1. User: create private owner/hub; allow attaching it to sessions
+2. Link infra submonic here; ask Sistemas to link it and record web01/DNS facts
+3. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
+4. Optional: benchmark at 50K+ history and with a larger model
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
@@ -22,6 +24,7 @@ updated: 2026-11-14
 - No vendor names except required adapter filename -> user rule
 - mn in POSIX sh -> runs anywhere with git
 - Self-hosted nginx + Let's Encrypt, cron git pull every 5 min -> publish = push to main
+- Shared memory: one private hub, folder per submonic (repo per submonic optional); all sessions write, rebase on push
 
 ## Blockers
 - Only claude adapter supported for now

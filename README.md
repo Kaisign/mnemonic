@@ -5,7 +5,8 @@ Git-based, token-cheap memory for coding agents.
 A session resumes work by reading two small files that load automatically:
 preferences plus protocol (`AGENTS.md`) and the live state (`STATE.md`).
 Long-term knowledge sits in `memory/` and is read only on request, through
-an index. History is `git log`. Estimated savings: ~40% tokens and ~28% cost
+an index. Optional shared memory (submonics) lets sessions in different
+repositories share knowledge through a common git repository. History is `git log`. Estimated savings: ~40% tokens and ~28% cost
 per month of typical work ([docs/savings.md](docs/savings.md)).
 
 ## Install
@@ -31,6 +32,8 @@ memory/INDEX.md    long-term memory index (on demand)
 memory/<topic>.md  long-term topics (on demand)
 .mnemonic/mn       CLI
 .mnemonic/README.md user guide
+.mnemonic/config   saved preferences
+.mnemonic/links    linked shared memories (optional)
 ```
 
 ## How it works
@@ -46,13 +49,16 @@ memory/<topic>.md  long-term topics (on demand)
 mn init [options]      install or change preferences
 mn check               size, caps, staleness, index integrity
 mn mem list|find|show|add
+mn sub link|find|show|add|save|sync|list|unlink   shared memory
 mn update              fetch the latest mn
 ```
 
 ## Documentation
+- [How it works](docs/how-it-works.md): plain-language overview with diagram
 - [Architecture](docs/architecture.md): files, loading, design decisions
 - [STATE.md](docs/state.md): format, caps, lifecycle, staleness
 - [Long-term memory](docs/memory.md): index, access rule, filling
+- [Shared memory](docs/shared.md): submonics, hub, concurrent writes
 - [CLI](docs/cli.md): commands, options, environment, tests
 - [Installer and hosting](docs/installer.md): bootstrap flow, server
 - [Savings](docs/savings.md): estimates and assumptions

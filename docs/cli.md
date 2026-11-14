@@ -24,7 +24,9 @@ Installs or updates the system. Options and defaults:
 | `--agents` | comma list: claude | claude |
 | `--dir` | path | repo root |
 
-Options are validated before anything is written. Behaviour on existing
+Options are validated before anything is written. Choices are saved in
+`.mnemonic/config`; a later `mn init` starts from them, so pass only what
+changes. Behaviour on existing
 files is described in [architecture.md](architecture.md#idempotency).
 
 ### `mn check`
@@ -44,6 +46,21 @@ Exit 0 when clean, 1 with warnings. Checks:
 - `add`: appends the index line and creates the topic file with a header.
   Rejects duplicates, invalid names and the reserved name `INDEX`.
 
+### `mn sub ...` (shared memory)
+| Command | Effect |
+|---|---|
+| `sub link <name> <repo>[#folder] ["desc"]` | Add to `.mnemonic/links`, clone, create submonic if missing, push, re-render AGENTS.md |
+| `sub unlink <name>` | Remove the link, re-render AGENTS.md |
+| `sub list` | Links with topic counts |
+| `sub sync [name]` | Clone or pull caches |
+| `sub find <words>` | Search all linked indexes (OR, case-insensitive); exit 1 when no match |
+| `sub show <name>/<topic>` | Print one topic |
+| `sub add <name> <topic> "<kw>" "<summary>"` | Create topic, commit, push |
+| `sub path <name>` | Local folder to edit topic files |
+| `sub save <name> ["msg"]` | Commit that folder and push, rebasing on concurrent writes |
+
+Details: [shared.md](shared.md).
+
 ### `mn update`
 Downloads `$MN_URL/mn` (default `https://<own-domain>/mn`),
 verifies the shebang and replaces `.mnemonic/mn`.
@@ -59,5 +76,6 @@ verifies the shebang and replaces `.mnemonic/mn`.
 
 ## Tests
 `sh tests/test.sh` runs the suite in temporary repositories: fresh install,
-idempotent re-init, merging with existing files, option validation, every
-`check` rule and every memory command.
+idempotent re-init, preference persistence, merging with existing files,
+option validation, every `check` rule, every memory command, and shared
+memory with two repositories writing concurrently to one hub.

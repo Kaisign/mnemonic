@@ -223,14 +223,30 @@ runs `mn mem find`) and opens the single matching topic file.
 .mnemonic/mn update                 fetch the latest mn
 ```
 
+## Shared memory (optional)
+Submonics are shared memories kept in another git repository (usually one
+private hub with a folder per submonic). Every linked session can read and
+write them; they are read only when needed. Linked submonics are listed in
+`.mnemonic/links` and summarized in AGENTS.md.
+```
+.mnemonic/mn sub link infra owner/hub#infra "servers, domains"
+.mnemonic/mn sub find <words>         search all linked indexes
+.mnemonic/mn sub show infra/<topic>   read one topic
+.mnemonic/mn sub add infra <topic> "<keywords>" "<summary>"
+.mnemonic/mn sub save infra "<message>"   after editing in $(mn sub path infra)
+```
+Never store secrets in shared memory; only where they are kept.
+
 ## Changing preferences
-Edit the Preferences list in AGENTS.md, or re-run `mn init` with new options
-(`.mnemonic/mn help`). Re-running only replaces the marked block; STATE.md and
+Edit the Preferences list in AGENTS.md, or re-run `mn init` with only the
+options that change (`.mnemonic/mn help`); other choices are kept from
+`.mnemonic/config`. Re-running only replaces the marked block; STATE.md and
 memory are never overwritten.
 
 ## Uninstall
-Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md and
-the two import lines in CLAUDE.md.
+Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md,
+the two import lines in CLAUDE.md and the `.mnemonic/cache/` line in
+.gitignore. Shared memory repositories are not touched.
 EOF
 }
 
@@ -268,7 +284,13 @@ load_config() {
   # Defaults, then values saved by a previous init in .mnemonic/config.
   P_CHAT=en P_WORK=en P_COMMITS=grouped P_BRAND=none P_CODE=on-request
   P_PRIORITY=savings P_DOCS=full P_TONE=direct-humor P_AGENTS=claude
-  [ -f "$1/.mnemonic/config" ] || return 0
+  if [ ! -f "$1/.mnemonic/config" ]; then
+    # Installs older than .mnemonic/config: recover languages from AGENTS.md.
+    [ -f "$1/AGENTS.md" ] || return 0
+    v=$(sed -n 's/^- chat_lang: //p' "$1/AGENTS.md" | head -1); [ -n "$v" ] && P_CHAT=$v
+    v=$(sed -n 's/^- work_lang: \([^ ]*\).*/\1/p' "$1/AGENTS.md" | head -1); [ -n "$v" ] && P_WORK=$v
+    return 0
+  fi
   while IFS='=' read -r k v; do
     case "$k" in
       chat_lang) P_CHAT=$v ;; work_lang) P_WORK=$v ;; commits) P_COMMITS=$v ;;

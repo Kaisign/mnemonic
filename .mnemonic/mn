@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.1.0"
+MN_VERSION="0.2.0"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -28,6 +28,16 @@ Usage:
   mn mem show <topic>      Print one topic file
   mn mem add <topic> "<keywords>" "<summary>"
                            Create a topic file and its index line
+  mn sub link <name> <owner/repo[#folder]|url> ["description"]
+                           Link a shared memory (submonic); creates it if missing
+  mn sub list | sync [name] | unlink <name>
+  mn sub find <words>      Search the indexes of all linked submonics
+  mn sub show <name>/<topic>
+  mn sub add <name> <topic> "<keywords>" "<summary>"
+                           Create a shared topic (commit + push)
+  mn sub path <name>       Local folder of a submonic, to edit topic files
+  mn sub save <name> ["message"]
+                           Commit and push edits (rebases on concurrent writes)
   mn update                Replace .mnemonic/mn with the latest published version
   mn version | help
 
@@ -113,7 +123,23 @@ Before the final commit of a task or session:
 
 Style for STATE.md and memory: telegraphic, one line per item, `what -> why`, lists not tables, paths instead of descriptions, no emojis.
 EOF
+  shared_section
   echo "$END_MARK"
+}
+
+shared_section() {
+  # Rendered only when .mnemonic/links has entries.
+  [ -s .mnemonic/links ] || return 0
+  grep -q '^[A-Za-z0-9._-]* *=' .mnemonic/links || return 0
+  echo
+  echo "## Shared memory"
+  echo "Submonics shared with other sessions; every session may read and write. Read only when needed."
+  sed -n 's/^\([A-Za-z0-9._-]*\) *= *[^|]*|* *\(.*\)$/- \1: \2/p' .mnemonic/links | sed 's/: $//'
+  cat <<'EOF'
+- Find: `.mnemonic/mn sub find <words>`. Read: `.mnemonic/mn sub show <name>/<topic>`.
+- New topic: `.mnemonic/mn sub add <name> <topic> "<keywords>" "<summary>"`, then edit the file at `.mnemonic/mn sub path <name>` and run `.mnemonic/mn sub save <name> "<message>"`.
+- Write facts other sessions need (infrastructure, cross-repo decisions); never secrets, only where they are kept.
+EOF
 }
 
 # ---------- templates ----------
@@ -197,14 +223,30 @@ runs `mn mem find`) and opens the single matching topic file.
 .mnemonic/mn update                 fetch the latest mn
 ```
 
+## Shared memory (optional)
+Submonics are shared memories kept in another git repository (usually one
+private hub with a folder per submonic). Every linked session can read and
+write them; they are read only when needed. Linked submonics are listed in
+`.mnemonic/links` and summarized in AGENTS.md.
+```
+.mnemonic/mn sub link infra owner/hub#infra "servers, domains"
+.mnemonic/mn sub find <words>         search all linked indexes
+.mnemonic/mn sub show infra/<topic>   read one topic
+.mnemonic/mn sub add infra <topic> "<keywords>" "<summary>"
+.mnemonic/mn sub save infra "<message>"   after editing in $(mn sub path infra)
+```
+Never store secrets in shared memory; only where they are kept.
+
 ## Changing preferences
-Edit the Preferences list in AGENTS.md, or re-run `mn init` with new options
-(`.mnemonic/mn help`). Re-running only replaces the marked block; STATE.md and
+Edit the Preferences list in AGENTS.md, or re-run `mn init` with only the
+options that change (`.mnemonic/mn help`); other choices are kept from
+`.mnemonic/config`. Re-running only replaces the marked block; STATE.md and
 memory are never overwritten.
 
 ## Uninstall
-Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md and
-the two import lines in CLAUDE.md.
+Delete `.mnemonic/`, `memory/`, `STATE.md`, the marked block in AGENTS.md,
+the two import lines in CLAUDE.md and the `.mnemonic/cache/` line in
+.gitignore. Shared memory repositories are not touched.
 EOF
 }
 
@@ -238,9 +280,40 @@ create_if_missing() {
   if [ -e "$1" ]; then echo "kept     $1"; else "$2" > "$1"; echo "created  $1"; fi
 }
 
-cmd_init() {
+load_config() {
+  # Defaults, then values saved by a previous init in .mnemonic/config.
   P_CHAT=en P_WORK=en P_COMMITS=grouped P_BRAND=none P_CODE=on-request
   P_PRIORITY=savings P_DOCS=full P_TONE=direct-humor P_AGENTS=claude
+  if [ ! -f "$1/.mnemonic/config" ]; then
+    # Installs older than .mnemonic/config: recover languages from AGENTS.md.
+    [ -f "$1/AGENTS.md" ] || return 0
+    v=$(sed -n 's/^- chat_lang: //p' "$1/AGENTS.md" | head -1); [ -n "$v" ] && P_CHAT=$v
+    v=$(sed -n 's/^- work_lang: \([^ ]*\).*/\1/p' "$1/AGENTS.md" | head -1); [ -n "$v" ] && P_WORK=$v
+    return 0
+  fi
+  while IFS='=' read -r k v; do
+    case "$k" in
+      chat_lang) P_CHAT=$v ;; work_lang) P_WORK=$v ;; commits) P_COMMITS=$v ;;
+      brand_refs) P_BRAND=$v ;; code) P_CODE=$v ;; priority) P_PRIORITY=$v ;;
+      docs) P_DOCS=$v ;; tone) P_TONE=$v ;; agents) P_AGENTS=$v ;;
+    esac
+  done < "$1/.mnemonic/config"
+}
+
+save_config() {
+  printf 'chat_lang=%s\nwork_lang=%s\ncommits=%s\nbrand_refs=%s\ncode=%s\npriority=%s\ndocs=%s\ntone=%s\nagents=%s\n' \
+    "$P_CHAT" "$P_WORK" "$P_COMMITS" "$P_BRAND" "$P_CODE" "$P_PRIORITY" "$P_DOCS" "$P_TONE" "$P_AGENTS" > .mnemonic/config
+}
+
+render_agents() {
+  # Re-render the AGENTS.md block from saved config (used after link changes).
+  load_config .
+  tmp=$(mktemp); agents_block > "$tmp"; write_block AGENTS.md "$tmp" >/dev/null; rm -f "$tmp"
+}
+
+cmd_init() {
+  for a in "$@"; do [ "${prev:-}" = --dir ] && MN_DIR=$a; prev=$a; done
+  load_config "$(root_dir)"
   while [ $# -gt 0 ]; do
     [ $# -ge 2 ] || die "missing value for $1"
     case "$1" in
@@ -265,6 +338,8 @@ cmd_init() {
   tmp=$(mktemp); agents_block > "$tmp"   # validates options before writing
   mkdir -p .mnemonic memory
   write_block AGENTS.md "$tmp"; rm -f "$tmp"
+  save_config; echo "wrote    .mnemonic/config"
+  ensure_line .gitignore ".mnemonic/cache/"
 
   old_ifs=$IFS; IFS=,
   for a in $P_AGENTS; do
@@ -382,6 +457,146 @@ cmd_mem() {
   esac
 }
 
+# ---------- shared memory (submonics) ----------
+# .mnemonic/links: "<name> = <repo>[#<folder>] | <description>"
+#   <repo>: owner/name (GitHub) or any git URL/path. Cache: .mnemonic/cache/
+
+link_spec() { sed -n "s/^$1 *= *\([^|]*\).*/\1/p" .mnemonic/links 2>/dev/null | sed 's/ *$//' | head -1; }
+spec_url() {
+  r=${1%%#*}
+  if [ -d "$r" ]; then (cd "$r" && pwd)
+  elif printf '%s' "$r" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+$'; then echo "https://github.com/$r.git"
+  else echo "$r"; fi
+}
+spec_folder() { case "$1" in *#*) echo "${1#*#}" ;; *) echo "" ;; esac; }
+cache_of() { echo ".mnemonic/cache/$(printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g')"; }
+sub_names() { sed -n 's/^\([A-Za-z0-9._-]*\) *=.*/\1/p' .mnemonic/links 2>/dev/null; }
+
+sub_resolve() {
+  # sub_resolve <name>: sets S_URL S_REPO (cache) S_DIR (submonic dir)
+  spec=$(link_spec "$1"); [ -n "$spec" ] || die "unknown submonic: $1 (see mn sub list)"
+  S_URL=$(spec_url "$spec"); S_REPO=$(cache_of "$S_URL"); f=$(spec_folder "$spec")
+  S_DIR=$S_REPO${f:+/$f}
+}
+
+remote_has_commits() { git -C "$1" ls-remote --heads origin 2>/dev/null | grep -q .; }
+pull_repo() { git -C "$1" pull -q --rebase origin "$(git -C "$1" symbolic-ref --short HEAD)" 2>/dev/null; }
+
+sync_repo() {
+  # sync_repo <url> <cache-dir>
+  if [ ! -d "$2/.git" ]; then
+    mkdir -p .mnemonic/cache
+    git clone -q "$1" "$2" 2>/dev/null || die "cannot clone $1 (check access)"
+    n=$(git config user.name || true); e=$(git config user.email || true)
+    [ -n "$n" ] && git -C "$2" config user.name "$n"
+    [ -n "$e" ] && git -C "$2" config user.email "$e"
+    git -C "$2" rev-parse -q --verify HEAD >/dev/null || git -C "$2" symbolic-ref HEAD refs/heads/main
+  elif remote_has_commits "$2"; then
+    pull_repo "$2" || die "pull failed in $2: resolve manually"
+  fi
+  touch "$2/.git/mn-synced"
+}
+
+push_repo() {
+  # push_repo <cache-dir> <message> [path]: commit and push, rebasing on conflicts.
+  git -C "$1" add -A -- "${3:-.}"
+  git -C "$1" diff --cached --quiet && { echo "nothing to save"; return 0; }
+  git -C "$1" commit -qm "$2"
+  i=0
+  while [ $i -lt 3 ]; do
+    git -C "$1" push -q -u origin HEAD 2>/dev/null && { echo "saved: $2"; return 0; }
+    pull_repo "$1" || { git -C "$1" rebase --abort 2>/dev/null; die "conflict in $1: another session edited the same lines; resolve and run mn sub save"; }
+    i=$((i + 1))
+  done
+  die "push failed after retries: $1"
+}
+
+ensure_submonic() {
+  # Create the submonic folder with an index (and a hub README) if missing.
+  [ -f "$S_DIR/INDEX.md" ] && return 0
+  mkdir -p "$S_DIR"
+  printf '# %s\nShared memory. Read only when needed; open only the matching topic.\nFormat: `- <topic>: <keywords> - <summary>` -> file <topic>.md\n\n' "$1" > "$S_DIR/INDEX.md"
+  if [ "$S_DIR" != "$S_REPO" ] && [ ! -f "$S_REPO/README.md" ]; then
+    cat > "$S_REPO/README.md" <<'EOF'
+# mnemonic hub
+Shared memory for coding agent sessions. Each folder is a submonic: an
+INDEX.md (one line per topic) plus one file per topic. Every linked session
+may read and write; read on demand only. Never store secrets here, only where
+they are kept. Managed with `mn sub` (see the mnemonic docs).
+EOF
+  fi
+  push_repo "$S_REPO" "Create submonic $1"
+}
+
+cmd_sub() {
+  cd "$(root_dir)"
+  sub=${1:-list}; [ $# -gt 0 ] && shift
+  case "$sub" in
+    link)
+      [ $# -ge 2 ] || die 'usage: mn sub link <name> <owner/repo[#folder]|url> ["description"]'
+      printf '%s' "$1" | grep -qE '^[A-Za-z0-9._-]+$' || die "name must match [A-Za-z0-9._-]+"
+      [ -z "$(link_spec "$1")" ] || die "already linked: $1"
+      mkdir -p .mnemonic
+      printf '%s = %s | %s\n' "$1" "$2" "${3:-}" >> .mnemonic/links
+      sub_resolve "$1"; sync_repo "$S_URL" "$S_REPO"; ensure_submonic "$1"
+      render_agents; echo "linked $1 -> $2" ;;
+    unlink)
+      [ $# -eq 1 ] || die "usage: mn sub unlink <name>"
+      [ -n "$(link_spec "$1")" ] || die "unknown submonic: $1"
+      grep -v "^$1 *=" .mnemonic/links > .mnemonic/links.tmp || true
+      mv .mnemonic/links.tmp .mnemonic/links; render_agents; echo "unlinked $1" ;;
+    list)
+      [ -s .mnemonic/links ] || { echo "(no submonics; mn sub link <name> <repo>)"; return 0; }
+      for n in $(sub_names); do
+        sub_resolve "$n"; c="not synced"
+        [ -f "$S_DIR/INDEX.md" ] && c="$(grep -c '^- ' "$S_DIR/INDEX.md" || true) topics"
+        printf '%-12s %s (%s)\n' "$n" "$(link_spec "$n")" "$c"
+      done ;;
+    sync)
+      for n in ${1:-$(sub_names)}; do sub_resolve "$n"; sync_repo "$S_URL" "$S_REPO"; done
+      echo "synced" ;;
+    find)
+      [ $# -gt 0 ] || die "usage: mn sub find <words>"
+      pat=$(printf '%s' "$*" | sed 's/[][\.*^$/]/\\&/g; s/  */|/g'); hit=1
+      for n in $(sub_names); do
+        sub_resolve "$n"
+        if [ ! -d "$S_REPO/.git" ]; then sync_repo "$S_URL" "$S_REPO"
+        elif [ -n "$(find "$S_REPO/.git/mn-synced" -mmin +1440 2>/dev/null)" ]; then
+          echo "info $n cache older than 1 day (mn sub sync)"; fi
+        [ -f "$S_DIR/INDEX.md" ] || continue
+        m=$(grep -iE "^- .*($pat)" "$S_DIR/INDEX.md" || true)
+        [ -n "$m" ] && { printf '%s\n' "$m" | sed "s#^- #$n/#"; hit=0; }
+      done
+      [ $hit -eq 0 ] || { echo "(no match)"; exit 1; } ;;
+    show)
+      [ $# -eq 1 ] || die "usage: mn sub show <name>/<topic>"
+      sub_resolve "${1%%/*}"; t=${1#*/}
+      [ -d "$S_REPO/.git" ] || sync_repo "$S_URL" "$S_REPO"
+      [ -f "$S_DIR/$t.md" ] || die "no topic: $1"
+      cat "$S_DIR/$t.md" ;;
+    path)
+      [ $# -eq 1 ] || die "usage: mn sub path <name>"
+      sub_resolve "$1"; echo "$S_DIR" ;;
+    add)
+      [ $# -eq 4 ] || die 'usage: mn sub add <name> <topic> "<keywords>" "<summary>"'
+      sub_resolve "$1"; sync_repo "$S_URL" "$S_REPO"; ensure_submonic "$1"
+      printf '%s' "$2" | grep -qE '^[A-Za-z0-9._-]+$' || die "topic must match [A-Za-z0-9._-]+"
+      [ "$2" != INDEX ] && [ "$2" != README ] || die "reserved name: $2"
+      grep -q "^- $2:" "$S_DIR/INDEX.md" && die "topic exists: $1/$2"
+      printf -- '- %s: %s - %s\n' "$2" "$3" "$4" >> "$S_DIR/INDEX.md"
+      [ -f "$S_DIR/$2.md" ] || printf '# %s\nkeywords: %s\nsummary: %s\nupdated: %s\n\n' "$2" "$3" "$4" "$(date +%Y-%m-%d)" > "$S_DIR/$2.md"
+      push_repo "$S_REPO" "Add $1/$2"
+      echo "edit $S_DIR/$2.md, then: mn sub save $1 \"<message>\"" ;;
+    save)
+      [ $# -ge 1 ] || die 'usage: mn sub save <name> ["message"]'
+      sub_resolve "$1"
+      [ -d "$S_REPO/.git" ] || die "not synced: $1"
+      rel=${S_DIR#"$S_REPO"}; rel=${rel#/}
+      push_repo "$S_REPO" "${2:-Update $1}" "${rel:-.}" ;;
+    *) die "unknown sub command: $sub" ;;
+  esac
+}
+
 # ---------- update ----------
 
 cmd_update() {
@@ -401,6 +616,7 @@ case "$cmd" in
   init)    cmd_init "$@" ;;
   check)   cmd_check ;;
   mem)     cmd_mem "$@" ;;
+  sub)     cmd_sub "$@" ;;
   update)  cmd_update ;;
   version) echo "$MN_VERSION" ;;
   help|-h|--help) usage ;;
