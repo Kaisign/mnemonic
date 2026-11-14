@@ -88,7 +88,7 @@ Called by the agent hooks; see [automation.md](automation.md). `settings`
 prints the hook block for manual merging.
 
 ### `mn update`
-Downloads `$MN_URL/mn` (default `https://<own-domain>/mn`),
+Downloads `$MN_URL/mn` (default `https://raw.githubusercontent.com/<owner>/mnemonic/main/mn`),
 verifies the shebang and replaces `.mnemonic/mn`.
 
 ### `mn version`, `mn help`
@@ -97,7 +97,7 @@ verifies the shebang and replaces `.mnemonic/mn`.
 | Variable | Default | Use |
 |---|---|---|
 | `MN_MAX_TOKENS` | 1500 | STATE.md budget for `check` |
-| `MN_URL` | https://<own-domain> | Source for `update` |
+| `MN_URL` | https://raw.githubusercontent.com/<owner>/mnemonic/main | Source for `update` (any mirror, or a tag: `.../v0.0.6`) |
 | `MN_DIR` | repo root | Target directory |
 | `MN_STALE_DAYS` | 90 | Age after which `check` suggests archiving a topic |
 | `MN_SKIP` | unset | `1` bypasses the pre-commit hook for one commit |

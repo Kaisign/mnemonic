@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.6
+- GitHub is the only host: install with
+  `Read https://github.com/<owner>/mnemonic and install it in owner/name`;
+  `mn` and `mn update` download from raw.githubusercontent.com; pinned
+  versions by tag. The own domain and its server are no longer needed.
+- Start prompt: `Read https://github.com/<owner>/mnemonic/blob/main/start.md
+  and work on owner/name` (printed by `mn status`).
+
 ## 0.0.5
 - Session start pulls other sessions' pushes (`git pull --rebase`) when the
   tree is clean and has an upstream; reports pulled commits and asks to

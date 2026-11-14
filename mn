@@ -3,8 +3,9 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.0.5"
-MN_URL="${MN_URL:-https://<own-domain>}"
+MN_VERSION="0.0.6"
+MN_REPO_URL="https://github.com/<owner>/mnemonic"
+MN_URL="${MN_URL:-https://raw.githubusercontent.com/<owner>/mnemonic/main}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
 END_MARK="<!-- mnemonic:end -->"
@@ -936,7 +937,7 @@ cmd_status() {
   echo "automation:  git pre-commit $h ($P_ENFORCE mode), agent session hooks $a"
   echo "commands:    .mnemonic/mn help    guide: .mnemonic/README.md"
   r=$(repo_slug)
-  if [ -n "$r" ]; then echo "new session: Read the instructions at ${MN_URL#https://}/start?repo=$r"
+  if [ -n "$r" ]; then echo "new session: Read $MN_REPO_URL/blob/main/start.md and work on $r"
   else echo "new session: set a git remote (origin) to get the start link"; fi
 }
 

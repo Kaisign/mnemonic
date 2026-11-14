@@ -1,5 +1,10 @@
 # mnemonic
 
+> Agents: to install, follow [install.md](install.md)
+> (raw: https://raw.githubusercontent.com/<owner>/mnemonic/main/install.md).
+> To start a session on a repository that already uses mnemonic, follow
+> [start.md](start.md).
+
 Git-based, token-cheap memory for coding agents.
 
 A session resumes work by reading two small files that load automatically:
@@ -12,18 +17,18 @@ per month of typical work ([docs/savings.md](docs/savings.md)).
 ## Install
 In an agent session, say:
 ```
-Read the instructions at <own-domain>
+Read https://github.com/<owner>/mnemonic and install it in owner/name
 ```
 The agent asks for the target repository and your preferences, installs the
 files, fills the initial state, commits and pushes, and hands you a start
 link for later sessions on that repository:
 ```
-Read the instructions at <own-domain>/start?repo=owner/name
+Read https://github.com/<owner>/mnemonic/blob/main/start.md and work on owner/name
 ```
 
 Manual install from a repository root:
 ```
-curl -fsSL https://<own-domain>/mn -o /tmp/mn
+curl -fsSL https://raw.githubusercontent.com/<owner>/mnemonic/main/mn -o /tmp/mn
 sh /tmp/mn init --chat-lang es
 ```
 
@@ -74,9 +79,9 @@ mn update              fetch the latest mn
 
 ## Repository layout
 ```
-install.md   installer prompt, served at the domain root
-start.md     session start prompt, served at /start
-mn           CLI, served at /mn
+install.md   installer prompt
+start.md     session start prompt
+mn           CLI (downloaded from raw.githubusercontent.com)
 tests/       test suite (sh tests/test.sh)
 docs/        documentation
 ```

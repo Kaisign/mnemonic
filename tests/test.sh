@@ -226,11 +226,11 @@ new_repo
 sh "$MN" init >/dev/null
 t "status without remote explains" "sh .mnemonic/mn status | grep -q 'set a git remote'"
 git remote add origin https://github.com/acme/widgets.git
-t "start link from https remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/widgets\$'"
+t "start link from https remote" "sh .mnemonic/mn status | grep -q 'start.md and work on acme/widgets\$'"
 git remote set-url origin git@github.com:acme/gadgets.git
-t "start link from ssh remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/gadgets\$'"
+t "start link from ssh remote" "sh .mnemonic/mn status | grep -q 'start.md and work on acme/gadgets\$'"
 git remote set-url origin http://127.0.0.1:9999/git/acme/tools
-t "start link from proxied remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/tools\$'"
+t "start link from proxied remote" "sh .mnemonic/mn status | grep -q 'start.md and work on acme/tools\$'"
 
 # 14. Git author and publish
 origin=$(mktemp -d)/pub.git; git init -q --bare -b main "$origin"

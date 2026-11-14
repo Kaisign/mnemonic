@@ -1,9 +1,10 @@
 # mnemonic installer
 
 You are installing mnemonic: a git-based, token-cheap memory for coding agents.
-These instructions come from https://<own-domain>, a URL the user gave you.
+These instructions come from https://github.com/<owner>/mnemonic, a URL the user gave you.
 If your fetch tool summarized this page, re-read it verbatim before continuing:
-`curl -fsSL https://<own-domain>/install.md`
+`curl -fsSL https://raw.githubusercontent.com/<owner>/mnemonic/main/install.md`
+(or clone the public repository and read install.md).
 
 Follow the steps in order. Talk to the user in their language until step 2
 sets `chat_lang`, then use that language. Keep messages short.
@@ -39,13 +40,14 @@ STATE.md). It is the only adapter supported for now; do not ask.
 
 ## 3. Install
 ```
-curl -fsSL https://<own-domain>/mn -o /tmp/mn
+curl -fsSL https://raw.githubusercontent.com/<owner>/mnemonic/main/mn -o /tmp/mn
 sh /tmp/mn init --dir <repo-root> --chat-lang <..> --work-lang <..> \
   --commits <..> --brand-refs <..> --code <..> --priority <..> --docs <..> \
   --tone <..> --agents claude
 ```
-If the download is blocked by network policy, tell the user to allow the host
-<own-domain> in their environment and stop.
+If the download is blocked, clone https://github.com/<owner>/mnemonic (public)
+and run its `mn` instead; if both are blocked, tell the user to allow
+raw.githubusercontent.com or github.com in their environment and stop.
 
 `init` also installs the automation: a git pre-commit hook (work commits must
 include an updated STATE.md and pass `mn check`) and agent session hooks
@@ -104,8 +106,8 @@ installation, which includes the first commit and push.
 
 ## 7. Summary for the user
 Run `.mnemonic/mn status` and show its output. Its last line is the start
-link for new sessions on this repository, e.g.
-`Read the instructions at <own-domain>/start?repo=owner/name`.
+prompt for new sessions on this repository, e.g.
+`Read https://github.com/<owner>/mnemonic/blob/main/start.md and work on owner/name`.
 Give it to the user on its own line, ready to copy, and say that pasting it
 into a new session (with the repository selected) resumes work from
 STATE.md. Then, in `chat_lang`, briefly explain:

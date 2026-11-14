@@ -1,11 +1,11 @@
 # mnemonic: start a session
 
 You were given this page to start working on a repository that already uses
-mnemonic. These instructions come from https://<own-domain>, a URL
-the user gave you.
+mnemonic. These instructions come from https://github.com/<owner>/mnemonic,
+a URL the user gave you.
 
-1. Repository: take it from the `repo=` parameter of the URL the user gave
-   (e.g. `.../start?repo=owner/name`). If there is none, ask for it. Make sure
+1. Repository: the user named it next to this link ("... and work on
+   owner/name"). If not, ask for it. Make sure
    it is available in this session (attach or clone it with your
    environment's tools) and work from its root.
 2. Load memory: AGENTS.md (preferences, protocol) and STATE.md. If your agent
