@@ -5,13 +5,12 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.1.0 done: mn CLI + tests, install.md, docs -> untested in a real install session
+- v0.1.0 published: /, /install.md, /mn served (200 text/plain) -> untested in a real install session
 
 ## Next
-1. Server: serve /mn as text/plain (Sistemas session)
-2. Test install in <owner>/test-repo from a fresh session
-3. Same iterative task with and without mnemonic; compare token usage
-4. Continuity test: second session resumes from STATE.md
+1. Test install in <owner>/test-repo from a fresh session
+2. Same iterative task with and without mnemonic; compare token usage
+3. Continuity test: second session resumes from STATE.md
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
