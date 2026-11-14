@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.0.4"
+MN_VERSION="0.0.5"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -810,6 +810,30 @@ apply_author() {
   return 0
 }
 
+sync_self() {
+  # Session start: bring in other sessions' pushes (pull --rebase) when it is safe.
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  git rev-parse -q --verify '@{u}' >/dev/null 2>&1 || return 0
+  if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    echo "mnemonic: local uncommitted changes, did not pull; other sessions' updates may be missing (commit, then git pull --rebase)"
+    return 0
+  fi
+  before=$(git rev-parse HEAD)
+  if ! git pull -q --rebase 2>/dev/null; then
+    git rebase --abort 2>/dev/null || true
+    echo "mnemonic: git pull --rebase failed; resolve manually before relying on STATE.md"
+    return 0
+  fi
+  after=$(git rev-parse HEAD)
+  [ "$before" = "$after" ] && return 0
+  n=$(git rev-list --count "$before..$after" 2>/dev/null || echo "?")
+  if git diff --quiet "$before" "$after" -- STATE.md 2>/dev/null; then
+    echo "mnemonic: pulled $n commit(s) from other sessions"
+  else
+    echo "mnemonic: pulled $n commit(s) from other sessions; STATE.md changed: read it again before working"
+  fi
+}
+
 stale_commits() {
   # Number of commits after the last one that touched STATE.md.
   last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
@@ -825,6 +849,7 @@ cmd_hook() {
       # Session start: enable git hooks in fresh clones, refresh shared memory, report problems only.
       [ -f .mnemonic/hooks/pre-commit ] && activate_git_hooks >/dev/null
       load_config .; apply_author
+      sync_self
       if [ -s .mnemonic/links ]; then (cmd_sub sync >/dev/null 2>&1) || echo "mnemonic: shared memory sync failed (check access)"; fi
       out=$( (cmd_check) 2>/dev/null) || printf '%s\n' "$out" | grep -E '^(WARN|FAIL)' | grep -v 'not updated in the last' | sed 's/^/mnemonic: /'
       exit 0 ;;

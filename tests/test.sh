@@ -252,6 +252,22 @@ t "retried commit passes with right author" "git commit -qm w && [ \"\$(git log 
 git config --unset user.name; git config --unset user.email; sh .mnemonic/mn hook start >/dev/null
 t "session start re-applies author" "[ \"\$(git config user.email)\" = ana@example.test ]"
 
+# 15. Several sessions on one repo: pull at session start
+origin=$(mktemp -d)/multi.git; git init -q --bare -b main "$origin"
+new_repo; A=$d; git symbolic-ref HEAD refs/heads/main; git remote add origin "$origin"
+sh "$MN" init >/dev/null; sh .mnemonic/mn publish >/dev/null
+B=$(mktemp -d); git clone -q "$origin" "$B"; cd "$B"; git config user.name t; git config user.email t@t
+t "session start silent when up to date" "[ -z \"\$(sh .mnemonic/mn hook start)\" ]"
+cd "$A"; sed -i 's/^updated: .*/updated: 2026-03-03/' STATE.md; git commit -qam "state from A"; git push -q
+cd "$B"
+t "session start pulls and flags STATE.md" "sh .mnemonic/mn hook start | grep -q 'STATE.md changed'"
+t "pulled state present" "grep -q '^updated: 2026-03-03' STATE.md"
+cd "$A"; echo n > notes.txt; git add notes.txt; git commit -qm "notes from A"; git push -q
+cd "$B"; echo local >> README.md
+t "dirty tree: warns, does not pull" "sh .mnemonic/mn hook start | grep -q 'did not pull' && [ ! -f notes.txt ]"
+git checkout -q README.md
+t "clean again: pulls without STATE change" "sh .mnemonic/mn hook start | grep -q 'pulled 1 commit(s) from other sessions\$' && [ -f notes.txt ]"
+
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"

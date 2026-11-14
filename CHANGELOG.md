@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.5
+- Session start pulls other sessions' pushes (`git pull --rebase`) when the
+  tree is clean and has an upstream; reports pulled commits and asks to
+  re-read STATE.md when it changed; warns instead of pulling with local
+  changes, and aborts a failed rebase.
+
 ## 0.0.4
 - Git author for all commits: asked by the installer, saved in
   `.mnemonic/config` (`--author-name`, `--author-email`), applied to the

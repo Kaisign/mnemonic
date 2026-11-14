@@ -41,13 +41,20 @@ for merging, otherwise a warning and `mn hook settings` prints the block).
 
 | Event | Command | Effect |
 |---|---|---|
-| Session start | `mn hook start` | Re-enables the git hook, syncs shared memory, prints only problems (WARN/FAIL) into the agent's context. Silent when clean. |
+| Session start | `mn hook start` | Re-enables the git hook, re-applies the git author, pulls other sessions' pushes (`git pull --rebase`, only with a clean tree and an upstream; tells the agent to re-read STATE.md if it changed), syncs shared memory, prints only problems or updates. Silent when nothing changed. |
 | Each user prompt | `mn hook prompt` | Cache-expiry advisor (below). Silent unless it applies. |
 | End of each turn | `mn hook stop` | Records the time, saves pending external shared memory edits (commit + push), and asks for a STATE.md update when unreflected commits reach the mode's limit. Never blocks twice in a row (`stop_hook_active`). |
 
 Uncommitted work does not trigger the turn-end hook; the pre-commit hook
 covers it at commit time. Compaction needs no hook: AGENTS.md and STATE.md
 are imports, reloaded after compaction.
+
+## Several sessions on one repository
+STATE.md, memory/ and artifacts/ are shared through git: every session pulls
+at start (above) and pushes its work. Parallel sessions may conflict on
+STATE.md, a single page each one rewrites; prefer one active session per
+task, and keep parallel details in memory/ topics. Shared memory
+(submonics) is only needed across different repositories.
 
 ## Cache-expiry advisor
 The prompt cache expires after about an hour. Resuming a long conversation
