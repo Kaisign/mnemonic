@@ -6,7 +6,7 @@ updated: 2026-11-14
 
 ## Current
 - v0.0.2: enforce modes (task default), cache-expiry advisor, session economy rules; 118 tests pass
-- v0.0.1 tagged locally; tags cannot be pushed from this environment (proxy 403)
+- Tags v0.0.1, v0.0.2 on GitHub; this environment cannot push tags (proxy 403): user pushes them
 - Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
 
 ## Next
