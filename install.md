@@ -45,6 +45,11 @@ sh /tmp/mn init --dir <repo-root> --chat-lang <..> --work-lang <..> \
 If the download is blocked by network policy, tell the user to allow the host
 <own-domain> in their environment and stop.
 
+`init` also installs the automation: a git pre-commit hook (work commits must
+include an updated STATE.md and pass `mn check`) and agent session hooks
+(sync shared memory at start, require a STATE.md update after unreflected
+commits). Nothing else is needed from the user.
+
 ## 4. Shared memory (optional)
 Explain in a few lines, in `chat_lang`, then ask whether to enable it:
 - A shared memory ("submonic") is knowledge several sessions need: servers,
@@ -86,8 +91,9 @@ Fill STATE.md (telegraphic, in the work language, caps from AGENTS.md):
   trailers must not name any AI tool or vendor.
 - Ask before pushing.
 
-## 7. Explain to the user
-In `chat_lang`, briefly explain:
+## 7. Summary for the user
+Run `.mnemonic/mn status` and show its output. Then, in `chat_lang`, briefly
+explain:
 - AGENTS.md (preferences + protocol) and STATE.md load at every session start.
 - STATE.md is rewritten at the end of each task, never appended; history is git log.
 - Long-term memory (memory/) is only read when they ask, e.g.
@@ -96,4 +102,7 @@ In `chat_lang`, briefly explain:
   any session may add or update topics; it is never loaded automatically.
 - Change preferences by editing AGENTS.md or re-running `.mnemonic/mn init`
   (saved choices are kept; pass only what changes).
+- Everything is automatic: hooks keep STATE.md current on every commit and
+  remind the agent at the end of a turn; old memory topics are flagged for
+  archiving. The user does not need to do anything.
 - Full guide: `.mnemonic/README.md`. Commands: `.mnemonic/mn help`.

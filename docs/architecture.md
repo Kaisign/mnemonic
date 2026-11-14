@@ -17,6 +17,9 @@ choice is judged by tokens read per session.
 | `.mnemonic/config` | by `mn` | mnemonic | Saved preference choices; `mn init` starts from them. |
 | `.mnemonic/links` | by `mn` | mnemonic | Linked shared memories. See [shared.md](shared.md). |
 | `.mnemonic/cache/` | on request only | mnemonic (git-ignored) | Local clones of shared memory repositories. |
+| `.mnemonic/hooks/pre-commit` | by git | mnemonic | Enforces STATE.md updates. See [automation.md](automation.md). |
+| `.claude/settings.json` | by the agent | user + mnemonic hooks | Adapter hooks: session start, turn end. |
+| `memory/archive/` | never | agent | Archived topics, out of the index. |
 | `.mnemonic/README.md` | by humans | mnemonic | User guide, regenerated on every `mn init`. |
 | `README.md` | by humans | user | Gets a short "Memory system" section linking the guide. |
 

@@ -37,6 +37,8 @@ Exit 0 when clean, 1 with warnings. Checks:
 - Staleness: commits since the last commit touching STATE.md.
 - Uncommitted STATE.md changes (info only).
 - Memory index consistency in both directions.
+- Info: memory topics whose `updated:` is older than `MN_STALE_DAYS` (90).
+- `--pre-commit`: same checks without staleness (used by the git hook).
 
 ### `mn mem list | find <words> | show <topic> | add <topic> "<keywords>" "<summary>"`
 - `list`: index entries.
@@ -61,6 +63,20 @@ Exit 0 when clean, 1 with warnings. Checks:
 
 Details: [shared.md](shared.md).
 
+### `mn archive <topic>`
+Moves `memory/<topic>.md` to `memory/archive/` (with `git mv` when tracked)
+and removes its index line. Archived topics stay in git and are greppable,
+but cost nothing.
+
+### `mn status`
+One-screen summary: preferences, STATE.md size, memory topics and archive,
+linked submonics, and whether the git and agent hooks are active. Printed at
+the end of `mn init`.
+
+### `mn hook start | stop | settings`
+Called by the agent hooks; see [automation.md](automation.md). `settings`
+prints the hook block for manual merging.
+
 ### `mn update`
 Downloads `$MN_URL/mn` (default `https://<own-domain>/mn`),
 verifies the shebang and replaces `.mnemonic/mn`.
@@ -73,6 +89,8 @@ verifies the shebang and replaces `.mnemonic/mn`.
 | `MN_MAX_TOKENS` | 1500 | STATE.md budget for `check` |
 | `MN_URL` | https://<own-domain> | Source for `update` |
 | `MN_DIR` | repo root | Target directory |
+| `MN_STALE_DAYS` | 90 | Age after which `check` suggests archiving a topic |
+| `MN_SKIP` | unset | `1` bypasses the pre-commit hook for one commit |
 
 ## Tests
 `sh tests/test.sh` runs the suite in temporary repositories: fresh install,

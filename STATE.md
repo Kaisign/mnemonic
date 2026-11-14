@@ -5,7 +5,7 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.3.0: automation (git pre-commit, agent session hooks, mn archive, mn status); 90 tests pass
+- v0.3.0: automation (git pre-commit, agent session hooks, mn archive, mn status), documented; 90 tests pass
 - v0.2.0 shared memory (mn sub) untested with a real hub
 - Real-data test (local only, no data in repo): replay -19% tokens/+21% USD main thread; Haiku Q&A -41% tokens, 14/14 vs 11/14
 

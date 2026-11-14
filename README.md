@@ -50,6 +50,8 @@ mn init [options]      install or change preferences
 mn check               size, caps, staleness, index integrity
 mn mem list|find|show|add
 mn sub link|find|show|add|save|sync|list|unlink   shared memory
+mn archive <topic>     move a memory topic out of the index
+mn status              one-screen summary
 mn update              fetch the latest mn
 ```
 
@@ -59,6 +61,7 @@ mn update              fetch the latest mn
 - [STATE.md](docs/state.md): format, caps, lifecycle, staleness
 - [Long-term memory](docs/memory.md): index, access rule, filling
 - [Shared memory](docs/shared.md): submonics, hub, concurrent writes
+- [Automation](docs/automation.md): hooks that keep memory current without user action
 - [CLI](docs/cli.md): commands, options, environment, tests
 - [Installer and hosting](docs/installer.md): bootstrap flow, server
 - [Savings](docs/savings.md): estimates and assumptions
