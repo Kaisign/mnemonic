@@ -7,7 +7,7 @@ updated: 2026-11-14
 ## Current
 - v0.3.0: automation (git pre-commit, agent session hooks, mn archive, mn status), documented; 90 tests pass
 - v0.2.0 shared memory (mn sub) untested with a real hub
-- Real-data test (local only, no data in repo): replay -19% tokens, +2% USD in-session; resumes after cache expiry -80% cost; Q&A -41% tokens, 14/14 vs 11/14
+- Real-data test (local only, no data in repo): replay -19% tokens, +2% USD in-session; resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with automatic memory lookup (11/14 before)
 
 ## Next
 1. User: create private owner/hub; allow attaching it to sessions
