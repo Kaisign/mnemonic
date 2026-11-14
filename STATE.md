@@ -10,10 +10,9 @@ updated: 2026-11-14
 - Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
 
 ## Next
-1. Sistemas: serve /start as start.md (text/plain)
-2. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
-3. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
-4. Optional: benchmark at 50K+ history and with a larger model
+1. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
+2. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
+3. Optional: benchmark at 50K+ history and with a larger model
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
