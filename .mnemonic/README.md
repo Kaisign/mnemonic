@@ -55,6 +55,18 @@ write them; they are read only when needed. Linked submonics are listed in
 ```
 Never store secrets in shared memory; only where they are kept.
 
+## Automation
+- Git pre-commit hook (`.mnemonic/hooks`, enabled through core.hooksPath):
+  rejects commits that change work files without STATE.md, or that fail
+  `mn check`. Bypass once with `MN_SKIP=1 git commit ...`.
+- Agent hooks (`.claude/settings.json`): at session start they re-enable the
+  git hook in fresh clones, sync shared memory and report problems; at the
+  end of each turn they save shared memory edits and ask the agent to update
+  STATE.md if commits were made without it.
+- `mn check` flags memory topics not updated in 90 days; `mn archive <topic>`
+  moves one out of the index (still in git).
+- `mn status` prints a one-screen summary.
+
 ## Changing preferences
 Edit the Preferences list in AGENTS.md, or re-run `mn init` with only the
 options that change (`.mnemonic/mn help`); other choices are kept from

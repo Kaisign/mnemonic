@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.2.0"
+MN_VERSION="0.3.0"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -38,6 +38,9 @@ Usage:
   mn sub path <name>       Local folder of a submonic, to edit topic files
   mn sub save <name> ["message"]
                            Commit and push edits (rebases on concurrent writes)
+  mn archive <topic>       Move a memory topic out of the index (kept in git)
+  mn status                Summary: preferences, state, memory, shared, automation
+  mn hook start|stop       Agent session hooks (installed by init)
   mn update                Replace .mnemonic/mn with the latest published version
   mn version | help
 
@@ -53,7 +56,8 @@ init options (defaults in brackets):
   --agents <list>          Comma list of adapters to create: claude [claude]
   --dir <path>             Target repo root [git toplevel or cwd]
 
-Environment: MN_MAX_TOKENS (STATE.md budget, default 1500), MN_URL.
+Environment: MN_MAX_TOKENS (STATE.md budget, default 1500), MN_STALE_DAYS (90), MN_URL,
+MN_SKIP=1 (bypass the pre-commit hook once).
 EOF
 }
 
@@ -120,6 +124,7 @@ Before the final commit of a task or session:
 2. Caps (lines): Goal 3, Current 5, Next 7, Decisions 10, Blockers 5, Notes 5. Prune the least relevant.
 3. Pruned but valuable knowledge: `.mnemonic/mn mem add <topic> "<keywords>" "<summary>"`, then write memory/<topic>.md.
 4. Run `.mnemonic/mn check`, fix warnings, commit STATE.md together with the work.
+Automation: the pre-commit hook rejects work commits without STATE.md or with check warnings; the turn-end hook asks for a STATE.md update after unreflected commits. Comply, do not bypass.
 
 Style for STATE.md and memory: telegraphic, one line per item, `what -> why`, lists not tables, paths instead of descriptions, no emojis.
 EOF
@@ -237,6 +242,18 @@ write them; they are read only when needed. Linked submonics are listed in
 ```
 Never store secrets in shared memory; only where they are kept.
 
+## Automation
+- Git pre-commit hook (`.mnemonic/hooks`, enabled through core.hooksPath):
+  rejects commits that change work files without STATE.md, or that fail
+  `mn check`. Bypass once with `MN_SKIP=1 git commit ...`.
+- Agent hooks (`.claude/settings.json`): at session start they re-enable the
+  git hook in fresh clones, sync shared memory and report problems; at the
+  end of each turn they save shared memory edits and ask the agent to update
+  STATE.md if commits were made without it.
+- `mn check` flags memory topics not updated in 90 days; `mn archive <topic>`
+  moves one out of the index (still in git).
+- `mn status` prints a one-screen summary.
+
 ## Changing preferences
 Edit the Preferences list in AGENTS.md, or re-run `mn init` with only the
 options that change (`.mnemonic/mn help`); other choices are kept from
@@ -347,7 +364,8 @@ cmd_init() {
       claude)
         [ -f CLAUDE.md ] && s="updated " || s="created "
         ensure_line CLAUDE.md "@AGENTS.md"; ensure_line CLAUDE.md "@STATE.md"
-        echo "$s CLAUDE.md" ;;
+        echo "$s CLAUDE.md"
+        install_agent_hooks ;;
       "") ;;
       *) IFS=$old_ifs; die "unsupported agent: $a" ;;
     esac
@@ -374,13 +392,16 @@ This repository uses mnemonic, a git-based memory for coding agents. See [.mnemo
   else
     echo "kept     README.md"
   fi
-  echo "done. Next: fill STATE.md, then commit."
+  install_hooks
+  echo
+  cmd_status
 }
 
 # ---------- check ----------
 
 cmd_check() {
   cd "$(root_dir)"
+  precommit=0; [ "${1:-}" = --pre-commit ] && precommit=1
   warn=0
   w() { printf 'WARN %s\n' "$*"; warn=$((warn + 1)); }
   [ -f STATE.md ] || { echo "FAIL STATE.md missing (run mn init)"; exit 1; }
@@ -402,7 +423,7 @@ cmd_check() {
     grep -q "^## $s\$" STATE.md || w "STATE.md missing section: $s"
   done
 
-  if git rev-parse --git-dir >/dev/null 2>&1; then
+  if [ "$precommit" -eq 0 ] && git rev-parse --git-dir >/dev/null 2>&1; then
     last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
     if [ -z "$last" ]; then w "STATE.md never committed"
     else
@@ -422,6 +443,14 @@ cmd_check() {
       printf '%s\n' "$topics" | grep -qxF "$t" || w "topic not in index: $f"
     done
     echo "ok   memory index checked ($(printf '%s' "$topics" | grep -c . || true) topics)"
+    cutoff=$(date -d "-${MN_STALE_DAYS:-90} days" +%Y-%m-%d 2>/dev/null || date -v-"${MN_STALE_DAYS:-90}"d +%Y-%m-%d 2>/dev/null || true)
+    if [ -n "$cutoff" ]; then
+      for f in memory/*.md; do
+        [ -f "$f" ] || continue; t=$(basename "$f" .md); [ "$t" = INDEX ] && continue
+        u=$(sed -n 's/^updated: //p' "$f" | head -1)
+        if [ -n "$u" ] && [ "$u" \< "$cutoff" ]; then echo "info topic $t not updated since $u: archive with mn archive $t"; fi
+      done
+    fi
   else
     w "memory/INDEX.md missing"
   fi
@@ -597,6 +626,135 @@ cmd_sub() {
   esac
 }
 
+# ---------- archive ----------
+
+cmd_archive() {
+  cd "$(root_dir)"
+  [ $# -eq 1 ] || die "usage: mn archive <topic>"
+  [ -f "memory/$1.md" ] || die "no topic: $1"
+  mkdir -p memory/archive
+  if git ls-files --error-unmatch "memory/$1.md" >/dev/null 2>&1; then git mv "memory/$1.md" "memory/archive/$1.md"
+  else mv "memory/$1.md" "memory/archive/$1.md"; fi
+  grep -v "^- $1:" memory/INDEX.md > memory/INDEX.md.tmp || true
+  mv memory/INDEX.md.tmp memory/INDEX.md
+  echo "archived memory/$1.md -> memory/archive/$1.md (out of the index, still in git)"
+}
+
+# ---------- hooks ----------
+
+precommit_hook() {
+  cat <<'HOOK'
+#!/bin/sh
+# mnemonic pre-commit: work commits must carry an updated STATE.md and pass mn check.
+# Bypass once: MN_SKIP=1 git commit ...
+[ "${MN_SKIP:-}" = 1 ] && exit 0
+cd "$(git rev-parse --show-toplevel)" || exit 0
+gd=$(git rev-parse --git-dir)
+if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
+staged=$(git diff --cached --name-only)
+[ -n "$staged" ] || exit 0
+work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
+if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
+  echo "mnemonic: this commit changes work files but not STATE.md." >&2
+  echo "Rewrite STATE.md (drop finished items, update Current/Next), git add STATE.md, commit again." >&2
+  exit 1
+fi
+[ -f .mnemonic/mn ] || exit 0
+out=$(sh .mnemonic/mn check --pre-commit 2>&1) || { printf '%s\n' "$out" | grep -v '^ok ' >&2; echo "mnemonic: fix the warnings above, then commit again." >&2; exit 1; }
+exit 0
+HOOK
+}
+
+agent_settings() {
+  cat <<'JSON'
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "command", "command": "sh .mnemonic/mn hook start"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "sh .mnemonic/mn hook stop"}]}]
+  }
+}
+JSON
+}
+
+install_hooks() {
+  mkdir -p .mnemonic/hooks
+  precommit_hook > .mnemonic/hooks/pre-commit; chmod +x .mnemonic/hooks/pre-commit
+  echo "wrote    .mnemonic/hooks/pre-commit"
+  activate_git_hooks
+}
+
+activate_git_hooks() {
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  cur=$(git config core.hooksPath || true)
+  if [ -z "$cur" ]; then git config core.hooksPath .mnemonic/hooks; echo "enabled  git hooks (core.hooksPath=.mnemonic/hooks)"
+  elif [ "$cur" != .mnemonic/hooks ]; then echo "WARN core.hooksPath is $cur: add .mnemonic/hooks/pre-commit to it manually"; fi
+}
+
+install_agent_hooks() {
+  # Agent adapter hooks (session start / turn end), merged into .claude/settings.json.
+  mkdir -p .claude
+  f=.claude/settings.json
+  if [ ! -f "$f" ]; then agent_settings > "$f"; echo "created  $f (hooks)"; return; fi
+  grep -q 'mn hook' "$f" && { echo "kept     $f (hooks present)"; return; }
+  if command -v python3 >/dev/null 2>&1; then
+    agent_settings | python3 -c '
+import json, sys
+f = sys.argv[1]; cur = json.load(open(f)); add = json.load(sys.stdin)
+h = cur.setdefault("hooks", {})
+for ev, entries in add["hooks"].items(): h.setdefault(ev, []).extend(entries)
+json.dump(cur, open(f, "w"), indent=2); open(f, "a").write("\n")' "$f" && echo "updated  $f (hooks merged)"
+  else
+    echo "WARN $f exists and python3 is missing: merge the output of 'mn hook settings' manually"
+  fi
+}
+
+cmd_hook() {
+  cd "$(root_dir)"
+  case "${1:-}" in
+    start)
+      # Session start: enable git hooks in fresh clones, refresh shared memory, report problems.
+      [ -f .mnemonic/hooks/pre-commit ] && activate_git_hooks >/dev/null
+      if [ -s .mnemonic/links ]; then (cmd_sub sync >/dev/null 2>&1) || echo "mnemonic: shared memory sync failed (check access)"; fi
+      out=$( (cmd_check) 2>/dev/null) || printf '%s\n' "$out" | grep -E '^(WARN|FAIL)' | sed 's/^/mnemonic: /'
+      exit 0 ;;
+    stop)
+      # Turn end: save shared memory edits; require a STATE.md update after unreflected commits.
+      input=$(cat 2>/dev/null || true)
+      for n in $(sub_names); do
+        sub_resolve "$n"; [ -d "$S_REPO/.git" ] || continue
+        [ -n "$(git -C "$S_REPO" status --porcelain 2>/dev/null)" ] && { (push_repo "$S_REPO" "Update $n" >/dev/null 2>&1) || true; }
+      done
+      printf '%s' "$input" | grep -q '"stop_hook_active" *: *true' && exit 0
+      last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
+      [ -n "$last" ] || exit 0
+      behind=$(git rev-list --count "$last..HEAD" 2>/dev/null || echo 0)
+      if [ "$behind" -gt 0 ]; then
+        printf '{"decision":"block","reason":"mnemonic: %s commit(s) since STATE.md was last updated. Rewrite STATE.md (caps, finished items removed, next steps), run .mnemonic/mn check, commit it, then finish."}\n' "$behind"
+      fi
+      exit 0 ;;
+    settings) agent_settings ;;
+    *) die "usage: mn hook start|stop|settings" ;;
+  esac
+}
+
+# ---------- status ----------
+
+cmd_status() {
+  cd "$(root_dir)"
+  load_config .
+  echo "mnemonic $MN_VERSION in $(basename "$(pwd)")"
+  printf 'preferences: chat %s, work %s, commits %s, brand refs %s, code %s, priority %s, docs %s, tone %s\n' \
+    "$P_CHAT" "$P_WORK" "$P_COMMITS" "$P_BRAND" "$P_CODE" "$P_PRIORITY" "$P_DOCS" "$P_TONE"
+  [ -f STATE.md ] && echo "state:       STATE.md ~$(( $(wc -c < STATE.md) / 4 ))/$MN_MAX_TOKENS tokens, loaded every session"
+  [ -f memory/INDEX.md ] && echo "memory:      $(grep -c '^- ' memory/INDEX.md || true) topic(s), read on demand; $(ls memory/archive 2>/dev/null | wc -l | tr -d ' ') archived"
+  if [ -s .mnemonic/links ]; then echo "shared:      $(sub_names | tr '\n' ' ')(on demand, all sessions write)"
+  else echo "shared:      none (mn sub link <name> <repo>)"; fi
+  h=off; [ "$(git config core.hooksPath 2>/dev/null)" = .mnemonic/hooks ] && h=on
+  a=off; grep -q 'mn hook' .claude/settings.json 2>/dev/null && a=on
+  echo "automation:  git pre-commit $h, agent session hooks $a"
+  echo "commands:    .mnemonic/mn help    guide: .mnemonic/README.md"
+}
+
 # ---------- update ----------
 
 cmd_update() {
@@ -614,7 +772,10 @@ cmd_update() {
 cmd=${1:-help}; [ $# -gt 0 ] && shift
 case "$cmd" in
   init)    cmd_init "$@" ;;
-  check)   cmd_check ;;
+  check)   cmd_check "$@" ;;
+  archive) cmd_archive "$@" ;;
+  hook)    cmd_hook "$@" ;;
+  status)  cmd_status ;;
   mem)     cmd_mem "$@" ;;
   sub)     cmd_sub "$@" ;;
   update)  cmd_update ;;

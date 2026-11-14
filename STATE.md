@@ -5,9 +5,9 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.2.0: shared memory (mn sub), persistent prefs (.mnemonic/config), installer step 4; 72 tests pass; not published to a real hub yet
-- v0.1.0 published (/, /install.md, /mn); install untested in a real session
-- Benchmark tests/bench: savings 1%/9%/26% at 0.7K/5K/15K history; 96/96 correct; report in tests/bench/results
+- v0.3.0: automation (git pre-commit, agent session hooks, mn archive, mn status); 90 tests pass
+- v0.2.0 shared memory (mn sub) untested with a real hub
+- Real-data test (local only, no data in repo): replay -19% tokens/+21% USD main thread; Haiku Q&A -41% tokens, 14/14 vs 11/14
 
 ## Next
 1. User: create private owner/hub; allow attaching it to sessions

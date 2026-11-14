@@ -63,7 +63,7 @@ t "cap violation detected" "! sh .mnemonic/mn check"
 t "cap violation reported" "sh .mnemonic/mn check | grep -q 'section Current'"
 sh "$MN" init >/dev/null; git checkout -q STATE.md
 MN_MAX_TOKENS=10 sh .mnemonic/mn check >/dev/null 2>&1; t "token budget enforced" "[ $? -ne 0 ]"
-echo x > other.txt; git add other.txt; git commit -qm other
+echo x > other.txt; git add other.txt; MN_SKIP=1 git commit -qm other
 t "staleness detected" "sh .mnemonic/mn check | grep -q 'not updated in the last 1'"
 
 # 6. Memory commands
@@ -133,12 +133,44 @@ t "unlink" "sh .mnemonic/mn sub unlink profile && ! grep -q '^- profile:' AGENTS
 t "unknown submonic rejected" "! sh .mnemonic/mn sub show nope/x"
 t "cache not tracked" "git add -A && ! git status --porcelain | grep -q cache"
 
+# 10. Automation: hooks, archive, status
+new_repo
+sh "$MN" init >/dev/null
+t "pre-commit hook installed" "[ -x .mnemonic/hooks/pre-commit ]"
+t "git hooks enabled" "[ \"\$(git config core.hooksPath)\" = .mnemonic/hooks ]"
+t "agent settings created" "grep -q 'mn hook start' .claude/settings.json && grep -q 'mn hook stop' .claude/settings.json"
+git add -A && git commit -qm init
+echo code > app.js; git add app.js
+t "commit without STATE.md rejected" "! git commit -qm work"
+t "MN_SKIP bypasses" "MN_SKIP=1 git commit -qm work"
+t "stop hook blocks after unreflected commit" "echo '{}' | sh .mnemonic/mn hook stop | grep -q '\"decision\":\"block\"'"
+t "stop hook respects stop_hook_active" "[ -z \"\$(echo '{\"stop_hook_active\": true}' | sh .mnemonic/mn hook stop)\" ]"
+echo more >> app.js; sed -i 's/^updated: .*/updated: 2026-01-01/' STATE.md; git add app.js STATE.md
+t "commit with STATE.md accepted" "git commit -qm work2"
+t "stop hook quiet when state current" "[ -z \"\$(echo '{}' | sh .mnemonic/mn hook stop)\" ]"
+awk '{print} /^## Current/{for(i=0;i<6;i++) print "- item " i}' STATE.md > s && mv s STATE.md; echo x >> app.js; git add -A
+t "pre-commit runs mn check (caps)" "! git commit -qm caps"
+git checkout -q HEAD -- STATE.md app.js
+t "session start hook is quiet when clean" "[ -z \"\$(sh .mnemonic/mn hook start)\" ]"
+git config --unset core.hooksPath; sh .mnemonic/mn hook start >/dev/null
+t "session start re-enables git hooks" "[ \"\$(git config core.hooksPath)\" = .mnemonic/hooks ]"
+sh .mnemonic/mn mem add old 'legacy' 'Old notes' >/dev/null; sed -i 's/^updated: .*/updated: 2020-01-01/' memory/old.md
+t "stale topic reported" "sh .mnemonic/mn check | grep -q 'topic old not updated since 2020-01-01'"
+t "archive" "sh .mnemonic/mn archive old"
+t "archived file kept" "[ -f memory/archive/old.md ] && ! grep -q '^- old:' memory/INDEX.md"
+t "status summary" "sh .mnemonic/mn status | grep -q 'automation:  git pre-commit on, agent session hooks on'"
+new_repo
+mkdir .claude; echo '{"permissions": {"allow": ["Bash(ls)"]}}' > .claude/settings.json
+sh "$MN" init >/dev/null
+t "existing agent settings merged" "grep -q 'Bash(ls)' .claude/settings.json && grep -q 'mn hook stop' .claude/settings.json"
+t "merge is idempotent" "sh '$MN' init >/dev/null && [ \$(grep -c 'mn hook stop' .claude/settings.json) -eq 1 ]"
+
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"
 t "unknown command fails" "! sh '$MN' bogus"
 t "no vendor names in generated files (adapter filename excepted)" \
-  "! grep -rhi 'claude\|anthropic\|openai' AGENTS.md STATE.md memory .mnemonic/README.md | sed 's/CLAUDE\.md//g' | grep -qi 'claude\|anthropic\|openai'"
+  "! grep -rhi 'claude\|anthropic\|openai' AGENTS.md STATE.md memory .mnemonic/README.md | sed 's/CLAUDE\.md//g; s/\.claude\///g' | grep -qi 'claude\|anthropic\|openai'"
 
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

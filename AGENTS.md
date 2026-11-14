@@ -27,6 +27,7 @@ Before the final commit of a task or session:
 2. Caps (lines): Goal 3, Current 5, Next 7, Decisions 10, Blockers 5, Notes 5. Prune the least relevant.
 3. Pruned but valuable knowledge: `.mnemonic/mn mem add <topic> "<keywords>" "<summary>"`, then write memory/<topic>.md.
 4. Run `.mnemonic/mn check`, fix warnings, commit STATE.md together with the work.
+Automation: the pre-commit hook rejects work commits without STATE.md or with check warnings; the turn-end hook asks for a STATE.md update after unreflected commits. Comply, do not bypass.
 
 Style for STATE.md and memory: telegraphic, one line per item, `what -> why`, lists not tables, paths instead of descriptions, no emojis.
 <!-- mnemonic:end -->
