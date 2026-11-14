@@ -23,6 +23,7 @@ Installs or updates the system. Options and defaults:
 | `--tone` | direct-humor, direct, formal | direct-humor |
 | `--agents` | comma list: claude | claude |
 | `--enforce` | task, strict, off | task |
+| `--author-name`, `--author-email` | git author | unset |
 | `--dir` | path | repo root |
 
 Options are validated before anything is written. Choices are saved in
@@ -68,6 +69,14 @@ Details: [shared.md](shared.md).
 Moves `memory/<topic>.md` to `memory/archive/` (with `git mv` when tracked)
 and removes its index line. Archived topics stay in git and are greppable,
 but cost nothing.
+
+### `mn publish ["message"]`
+Applies the configured author, stages the mnemonic files (AGENTS.md,
+CLAUDE.md, STATE.md, README.md, .gitignore, memory/, shared/, artifacts/,
+.mnemonic/, .claude/), commits (default message `Add mnemonic memory
+system`) and pushes with `-u origin HEAD`. If that push is refused it pushes
+branch `mnemonic-install` and prints how to merge it. No prompts; used by the
+installer for the first commit.
 
 ### `mn status`
 One-screen summary: preferences, STATE.md size, memory topics and archive,

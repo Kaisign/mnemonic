@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.0.3"
+MN_VERSION="0.0.4"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -41,6 +41,7 @@ Usage:
                            Commit and push edits (rebases on concurrent writes)
   mn archive <topic>       Move a memory topic out of the index (kept in git)
   mn status                Summary: preferences, state, memory, shared, automation
+  mn publish ["message"]   Commit the mnemonic files and push (no prompts)
   mn hook start|prompt|stop  Agent session hooks (installed by init)
   mn update                Replace .mnemonic/mn with the latest published version
   mn version | help
@@ -56,6 +57,8 @@ init options (defaults in brackets):
   --tone <mode>            direct-humor | direct | formal [direct-humor]
   --agents <list>          Comma list of adapters to create: claude [claude]
   --enforce <mode>         STATE.md updates: task | strict | off [task]
+  --author-name <name>     Git author for every commit in this repo (with --author-email)
+  --author-email <email>   Applied to this clone and re-applied in fresh clones by the hooks
   --dir <path>             Target repo root [git toplevel or cwd]
 
 Environment: MN_MAX_TOKENS (STATE.md budget, 1500), MN_STALE_DAYS (90), MN_TASK_COMMITS (3),
@@ -331,7 +334,7 @@ create_if_missing() {
 load_config() {
   # Defaults, then values saved by a previous init in .mnemonic/config.
   P_CHAT=en P_WORK=en P_COMMITS=grouped P_BRAND=none P_CODE=on-request
-  P_PRIORITY=savings P_DOCS=full P_TONE=direct-humor P_AGENTS=claude P_ENFORCE=task
+  P_PRIORITY=savings P_DOCS=full P_TONE=direct-humor P_AGENTS=claude P_ENFORCE=task P_AUTHOR_NAME="" P_AUTHOR_EMAIL=""
   if [ ! -f "$1/.mnemonic/config" ]; then
     # Installs older than .mnemonic/config: recover languages from AGENTS.md.
     [ -f "$1/AGENTS.md" ] || return 0
@@ -344,13 +347,15 @@ load_config() {
       chat_lang) P_CHAT=$v ;; work_lang) P_WORK=$v ;; commits) P_COMMITS=$v ;;
       brand_refs) P_BRAND=$v ;; code) P_CODE=$v ;; priority) P_PRIORITY=$v ;;
       docs) P_DOCS=$v ;; tone) P_TONE=$v ;; agents) P_AGENTS=$v ;; enforce) P_ENFORCE=$v ;;
+      author_name) P_AUTHOR_NAME=$v ;; author_email) P_AUTHOR_EMAIL=$v ;;
     esac
   done < "$1/.mnemonic/config"
 }
 
 save_config() {
-  printf 'chat_lang=%s\nwork_lang=%s\ncommits=%s\nbrand_refs=%s\ncode=%s\npriority=%s\ndocs=%s\ntone=%s\nagents=%s\nenforce=%s\n' \
-    "$P_CHAT" "$P_WORK" "$P_COMMITS" "$P_BRAND" "$P_CODE" "$P_PRIORITY" "$P_DOCS" "$P_TONE" "$P_AGENTS" "$P_ENFORCE" > .mnemonic/config
+  printf 'chat_lang=%s\nwork_lang=%s\ncommits=%s\nbrand_refs=%s\ncode=%s\npriority=%s\ndocs=%s\ntone=%s\nagents=%s\nenforce=%s\nauthor_name=%s\nauthor_email=%s\n' \
+    "$P_CHAT" "$P_WORK" "$P_COMMITS" "$P_BRAND" "$P_CODE" "$P_PRIORITY" "$P_DOCS" "$P_TONE" "$P_AGENTS" "$P_ENFORCE" \
+    "$P_AUTHOR_NAME" "$P_AUTHOR_EMAIL" > .mnemonic/config
 }
 
 render_agents() {
@@ -375,6 +380,8 @@ cmd_init() {
       --tone)       P_TONE=$2 ;;
       --agents)     P_AGENTS=$2 ;;
       --enforce)    P_ENFORCE=$2 ;;
+      --author-name)  P_AUTHOR_NAME=$2 ;;
+      --author-email) P_AUTHOR_EMAIL=$2 ;;
       --dir)        MN_DIR=$2 ;;
       *) die "unknown option: $1" ;;
     esac
@@ -387,7 +394,12 @@ cmd_init() {
   tmp=$(mktemp); agents_block > "$tmp"   # validates options before writing
   mkdir -p .mnemonic memory
   write_block AGENTS.md "$tmp"; rm -f "$tmp"
+  if [ -n "$P_AUTHOR_NAME$P_AUTHOR_EMAIL" ]; then
+    [ -n "$P_AUTHOR_NAME" ] && [ -n "$P_AUTHOR_EMAIL" ] || die "--author-name and --author-email go together"
+    printf '%s' "$P_AUTHOR_EMAIL" | grep -qE '^[^@ ]+@[^@ ]+$' || die "invalid --author-email: $P_AUTHOR_EMAIL"
+  fi
   save_config; echo "wrote    .mnemonic/config"
+  apply_author && [ -n "$P_AUTHOR_NAME" ] && echo "set      git author $P_AUTHOR_NAME <$P_AUTHOR_EMAIL>"
   ensure_line .gitignore ".mnemonic/cache/"
 
   old_ifs=$IFS; IFS=,
@@ -706,6 +718,15 @@ if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
 staged=$(git diff --cached --name-only)
 [ -n "$staged" ] || exit 0
 mode=$(sed -n 's/^enforce=//p' .mnemonic/config 2>/dev/null); mode=${mode:-task}
+an=$(sed -n 's/^author_name=//p' .mnemonic/config 2>/dev/null); ae=$(sed -n 's/^author_email=//p' .mnemonic/config 2>/dev/null)
+if [ -n "$an" ] && [ -n "$ae" ]; then
+  ident=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed 's/ [0-9]* [-+][0-9]*$//')
+  if [ "$ident" != "$an <$ae>" ]; then
+    git config user.name "$an"; git config user.email "$ae"
+    echo "mnemonic: commit author was '$ident'; this repo commits as '$an <$ae>'." >&2
+    echo "The git author is now set; run the same commit again." >&2; exit 1
+  fi
+fi
 work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|shared/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
 if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
   last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
@@ -776,6 +797,19 @@ json.dump(cur, open(f, "w"), indent=2); open(f, "a").write("\n")' "$f" && echo "
   fi
 }
 
+apply_author() {
+  # Set the configured git author on this clone (and shared memory clones). Returns 0.
+  [ -n "${P_AUTHOR_NAME:-}" ] && [ -n "${P_AUTHOR_EMAIL:-}" ] || return 0
+  git rev-parse --git-dir >/dev/null 2>&1 || return 0
+  [ "$(git config user.name)" = "$P_AUTHOR_NAME" ] || git config user.name "$P_AUTHOR_NAME"
+  [ "$(git config user.email)" = "$P_AUTHOR_EMAIL" ] || git config user.email "$P_AUTHOR_EMAIL"
+  for d in .mnemonic/cache/*/; do
+    [ -d "$d.git" ] || continue
+    git -C "$d" config user.name "$P_AUTHOR_NAME"; git -C "$d" config user.email "$P_AUTHOR_EMAIL"
+  done
+  return 0
+}
+
 stale_commits() {
   # Number of commits after the last one that touched STATE.md.
   last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)
@@ -790,6 +824,7 @@ cmd_hook() {
     start)
       # Session start: enable git hooks in fresh clones, refresh shared memory, report problems only.
       [ -f .mnemonic/hooks/pre-commit ] && activate_git_hooks >/dev/null
+      load_config .; apply_author
       if [ -s .mnemonic/links ]; then (cmd_sub sync >/dev/null 2>&1) || echo "mnemonic: shared memory sync failed (check access)"; fi
       out=$( (cmd_check) 2>/dev/null) || printf '%s\n' "$out" | grep -E '^(WARN|FAIL)' | grep -v 'not updated in the last' | sed 's/^/mnemonic: /'
       exit 0 ;;
@@ -828,6 +863,28 @@ cmd_hook() {
   esac
 }
 
+# ---------- publish ----------
+
+cmd_publish() {
+  # Commit the mnemonic files and push, no questions (used by the installer).
+  cd "$(root_dir)"
+  git rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository"
+  load_config .; apply_author
+  for f in AGENTS.md CLAUDE.md STATE.md README.md .gitignore memory shared artifacts .mnemonic .claude; do
+    [ -e "$f" ] && git add -- "$f"
+  done
+  if git diff --cached --quiet; then echo "nothing to commit"
+  else git commit -q -m "${1:-Add mnemonic memory system}" && echo "committed: ${1:-Add mnemonic memory system}"; fi
+  git remote get-url origin >/dev/null 2>&1 || { echo "no remote 'origin': commit kept locally"; return 0; }
+  if git push -q -u origin HEAD 2>/dev/null; then echo "pushed to origin/$(git symbolic-ref --short HEAD 2>/dev/null || echo HEAD)"
+  else
+    b="mnemonic-install"
+    if git push -q -u origin "HEAD:$b" 2>/dev/null; then
+      echo "WARN push to the current branch refused; pushed to branch $b. Merge it with: git fetch origin && git merge origin/$b && git push"
+    else die "push failed (check access to origin)"; fi
+  fi
+}
+
 # ---------- status ----------
 
 repo_slug() {
@@ -849,6 +906,8 @@ cmd_status() {
   else echo "shared:      none (mn sub link <name> <repo>)"; fi
   h=off; [ "$(git config core.hooksPath 2>/dev/null)" = .mnemonic/hooks ] && h=on
   a=off; grep -q 'mn hook' .claude/settings.json 2>/dev/null && a=on
+  if [ -n "$P_AUTHOR_NAME" ]; then echo "git author:  $P_AUTHOR_NAME <$P_AUTHOR_EMAIL> (all commits)"
+  else echo "git author:  not set (mn init --author-name ... --author-email ...)"; fi
   echo "automation:  git pre-commit $h ($P_ENFORCE mode), agent session hooks $a"
   echo "commands:    .mnemonic/mn help    guide: .mnemonic/README.md"
   r=$(repo_slug)
@@ -877,6 +936,7 @@ case "$cmd" in
   archive) cmd_archive "$@" ;;
   hook)    cmd_hook "$@" ;;
   status)  cmd_status ;;
+  publish) cmd_publish "$@" ;;
   mem)     cmd_mem "$@" ;;
   sub)     cmd_sub "$@" ;;
   update)  cmd_update ;;

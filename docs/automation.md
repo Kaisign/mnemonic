@@ -26,6 +26,11 @@ On every commit:
 2. If STATE.md is staged it runs `mn check --pre-commit` (size, caps,
    sections, memory index); any warning rejects the commit.
 3. A pre-existing `.git/hooks/pre-commit` still runs first.
+4. Author: when `author_name`/`author_email` are configured and the commit
+   would use another identity (for example a container's global git user),
+   the hook sets the configured author and rejects once; the retried commit
+   carries the right author. The session start hook also re-applies it in
+   fresh clones.
 
 Bypass once: `MN_SKIP=1 git commit ...`. If `core.hooksPath` already points
 elsewhere, init warns instead of overriding it.

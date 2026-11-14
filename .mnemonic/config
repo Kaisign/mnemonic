@@ -8,3 +8,5 @@ docs=full
 tone=direct-humor
 agents=claude
 enforce=task
+author_name=Pabga
+author_email=dev@kaisign.net

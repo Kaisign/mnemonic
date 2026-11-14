@@ -5,7 +5,7 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.0.3: first push in installer, start link (/start?repo=) in mn status; 122 tests pass
+- v0.0.4: git author in config (asked by installer, hook-enforced), mn publish (auto first commit+push); 134 tests pass
 - Tags v0.0.1, v0.0.2 on GitHub; this environment cannot push tags (proxy 403): user pushes them
 - Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
 

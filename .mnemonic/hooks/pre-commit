@@ -10,6 +10,15 @@ if [ -x "$gd/hooks/pre-commit" ]; then "$gd/hooks/pre-commit" || exit 1; fi
 staged=$(git diff --cached --name-only)
 [ -n "$staged" ] || exit 0
 mode=$(sed -n 's/^enforce=//p' .mnemonic/config 2>/dev/null); mode=${mode:-task}
+an=$(sed -n 's/^author_name=//p' .mnemonic/config 2>/dev/null); ae=$(sed -n 's/^author_email=//p' .mnemonic/config 2>/dev/null)
+if [ -n "$an" ] && [ -n "$ae" ]; then
+  ident=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed 's/ [0-9]* [-+][0-9]*$//')
+  if [ "$ident" != "$an <$ae>" ]; then
+    git config user.name "$an"; git config user.email "$ae"
+    echo "mnemonic: commit author was '$ident'; this repo commits as '$an <$ae>'." >&2
+    echo "The git author is now set; run the same commit again." >&2; exit 1
+  fi
+fi
 work=$(printf '%s\n' "$staged" | grep -vE '^(STATE\.md|memory/|shared/|\.mnemonic/|AGENTS\.md|CLAUDE\.md|\.claude/|\.gitignore$)' || true)
 if [ -n "$work" ] && ! printf '%s\n' "$staged" | grep -qx 'STATE.md'; then
   last=$(git log -1 --format=%H -- STATE.md 2>/dev/null || true)

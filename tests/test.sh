@@ -232,6 +232,26 @@ t "start link from ssh remote" "sh .mnemonic/mn status | grep -q 'start?repo=acm
 git remote set-url origin http://127.0.0.1:9999/git/acme/tools
 t "start link from proxied remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/tools\$'"
 
+# 14. Git author and publish
+origin=$(mktemp -d)/pub.git; git init -q --bare -b main "$origin"
+new_repo; git remote add origin "$origin"; git config user.name Bot; git config user.email bot@vendor.test
+t "author pair required" "! sh '$MN' init --author-name 'Ana'"
+t "invalid email rejected" "! sh '$MN' init --author-name Ana --author-email nope"
+sh "$MN" init --author-name 'Ana Dev' --author-email ana@example.test >/dev/null
+t "author applied to clone" "[ \"\$(git config user.name)\" = 'Ana Dev' ] && [ \"\$(git config user.email)\" = ana@example.test ]"
+t "author saved in config" "grep -qx 'author_email=ana@example.test' .mnemonic/config"
+t "status shows author" "sh .mnemonic/mn status | grep -q 'git author:  Ana Dev <ana@example.test>'"
+t "publish commits and pushes" "sh .mnemonic/mn publish | grep -q 'pushed to origin'"
+t "first commit has configured author" "[ \"\$(git --git-dir='$origin' log -1 --format='%an <%ae>' 2>/dev/null || git log -1 --format='%an <%ae>')\" = 'Ana Dev <ana@example.test>' ]"
+t "publish idempotent" "sh .mnemonic/mn publish | grep -q 'nothing to commit'"
+git config user.name Bot; git config user.email bot@vendor.test
+echo x > w.txt; git add w.txt
+t "hook rejects foreign author once" "! git commit -qm w"
+t "hook restored author" "[ \"\$(git config user.name)\" = 'Ana Dev' ]"
+t "retried commit passes with right author" "git commit -qm w && [ \"\$(git log -1 --format=%an)\" = 'Ana Dev' ]"
+git config --unset user.name; git config --unset user.email; sh .mnemonic/mn hook start >/dev/null
+t "session start re-applies author" "[ \"\$(git config user.email)\" = ana@example.test ]"
+
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.4
+- Git author for all commits: asked by the installer, saved in
+  `.mnemonic/config` (`--author-name`, `--author-email`), applied to the
+  clone and shared memory clones, re-applied at session start, enforced by
+  the pre-commit hook.
+- `mn publish`: commits the mnemonic files and pushes without prompts; the
+  installer runs it for the first commit (no confirmation).
+
 ## 0.0.3
 - The installer pushes the first commit instead of asking.
 - Start link for new sessions on an installed repository:

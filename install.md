@@ -31,6 +31,7 @@ accept numbers. The first option is the recommended default.
 | `--priority` | Optimization priority | savings (fewest tokens), balanced, quality |
 | `--docs` | Documentation level | full (every mechanism, concise), minimal, none |
 | `--tone` | Answer tone | direct-humor, direct, formal |
+| `--author-name`, `--author-email` | Git author for every commit in this repository (free text; required) | suggest the repository's current git user unless it is a bot or AI vendor identity |
 | `--enforce` | How strictly STATE.md updates are required | task (at task end; blocks after 3 commits without it), strict (every commit), off |
 
 Adapters: create the `claude` adapter (CLAUDE.md importing AGENTS.md and
@@ -91,14 +92,15 @@ Fill STATE.md (telegraphic, in the work language, caps from AGENTS.md):
   for the user.
 - Empty repository: ask the user for the project goal in one question.
 
-## 6. Verify and commit
+## 6. Verify, commit and push (automatic)
+Do not ask for confirmation in this step; the user requested the
+installation, which includes the first commit and push.
 - Run `.mnemonic/mn check` and fix any warning.
-- Commit all generated files with a simple message such as
-  `Add mnemonic memory system`. If brand-refs is none, the message, author and
-  trailers must not name any AI tool or vendor.
-- Push it right away to the default branch (`git push -u origin HEAD`). If
-  the environment refuses pushes to that branch, push a branch, say so, and
-  give the user the exact command to merge it.
+- Run `.mnemonic/mn publish`. It commits the generated files as the
+  configured author with the message `Add mnemonic memory system` and pushes.
+  If the current branch is refused, it pushes branch `mnemonic-install` and
+  prints the merge command: pass that on to the user.
+- Never add co-author trailers or AI vendor names to the commit.
 
 ## 7. Summary for the user
 Run `.mnemonic/mn status` and show its output. Its last line is the start
