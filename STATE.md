@@ -5,11 +5,12 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.1.0 published: /, /install.md, /mn served (200 text/plain) -> untested in a real install session
+- v0.1.0 published (/, /install.md, /mn); install untested in a real session
+- Benchmark tests/bench: 16/16 both conditions, memory context -60%, agent tokens -1% (fixed overhead dominates short sample)
 
 ## Next
 1. Test install in <owner>/test-repo from a fresh session
-2. Same iterative task with and without mnemonic; compare token usage
+2. Long-transcript benchmark variant to show agent-level savings (pending user)
 3. Continuity test: second session resumes from STATE.md
 
 ## Decisions
