@@ -7,12 +7,12 @@ updated: 2026-11-14
 ## Current
 - v0.0.6: GitHub is the only host (install/start prompts, mn update from raw); 139 tests pass
 - Tags v0.0.1, v0.0.2 on GitHub; this environment cannot push tags (proxy 403): user pushes them
-- Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
+- 0.0.6 tests: 22 Haiku runs all correct, -36% tokens at 24K real history; resume test with/without: 5/5 vs 3/5 answers, equal tokens on small repo
 
 ## Next
-1. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
-2. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
-3. Optional: benchmark at 50K+ history and with a larger model
+1. v0.0.7 fixes from 0.0.6 tests: check info before first commit; INDEX template wording (auto lookup); amend counted by hook; 6 sections mandatory in protocol; staged STATE.md not stale; start prompt for non-GitHub remotes; no counters in STATE
+2. Test install in <owner>/test-repo (user)
+3. Multi-day real project and parallel sessions test
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history
