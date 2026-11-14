@@ -5,14 +5,13 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed from github.com/<owner>/mnemonic
 
 ## Current
-- v0.0.6: GitHub is the only host (install/start prompts, mn update from raw); 139 tests pass
-- Tags v0.0.1, v0.0.2 on GitHub; this environment cannot push tags (proxy 403): user pushes them
-- 0.0.6 tests: 22 Haiku runs all correct, -36% tokens at 24K real history; resume test with/without: 5/5 vs 3/5 answers, equal tokens on small repo
+- Paused after v0.0.6; repo private; resume guide: CONTINUE.md
+- 0.0.6 tests in README: -36% tokens at 24K history; resume with/without 5/5 vs 3/5
 
 ## Next
 1. v0.0.7 fixes from 0.0.6 tests: check info before first commit; INDEX template wording (auto lookup); amend counted by hook; 6 sections mandatory in protocol; staged STATE.md not stale; start prompt for non-GitHub remotes; no counters in STATE
-2. Test install in <owner>/test-repo (user)
-3. Multi-day real project and parallel sessions test
+2. Multi-day real project and parallel sessions test (install in <owner>/test-repo)
+3. Private repo breaks raw URLs: install by clone or make public again
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history

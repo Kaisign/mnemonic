@@ -64,6 +64,37 @@ mn status              one-screen summary
 mn update              fetch the latest mn
 ```
 
+## Test results (0.0.6)
+Measured on 2026-11-14 with small-model and mid-size-model subagents
+(details: [tests/bench/RESULTS.md](tests/bench/RESULTS.md)).
+
+Resume benchmark (22 runs; same questions, automatic grading):
+| Previous history | Tokens without | Tokens with | Saving | Correct without | Correct with |
+|---|---|---|---|---|---|
+| ~0.7K tokens | 66,049 | 65,671 | 1% | 16/16 | 16/16 |
+| ~5K tokens | 72,686 | 65,175 | 10% | 16/16 | 16/16 |
+| ~15K tokens | 88,759 | 66,118 | 26% | 16/16 | 16/16 |
+| ~24K tokens (real session) | 106,603 | 68,163 | 36% | 14/14 | 14/14 |
+
+End to end:
+- Install from GitHub into an empty repository: succeeded first time
+  (configured author enforced over a foreign git identity, first commit and
+  push without prompts).
+- Work session with five user messages and changing decisions: five commits,
+  STATE.md and a memory topic kept current; the hooks blocked twice (3
+  commits without a state update, missing sections) and the agent complied.
+- Resuming in a fresh session, with vs without mnemonic (same code and git
+  history): 5/5 vs 3/5 questions answered; without memory no agent knew the
+  rejected alternative or the planned task. Tokens were equal (~69K) on this
+  ~150-line project; one agent without rules added an AI co-author trailer.
+- Real development session replay: resuming after the prompt cache expired
+  cost about 80% less with STATE.md; inside a live session the money saving
+  was negligible (cache reads are already cheap).
+
+Conclusion: the main value is keeping what code does not record (decisions,
+reasons, plans) and enforcing discipline automatically; token savings grow
+with history length and matter most when resuming long projects.
+
 ## Documentation
 - [How it works](docs/how-it-works.md): plain-language overview with diagram
 - [Architecture](docs/architecture.md): files, loading, design decisions
@@ -75,6 +106,7 @@ mn update              fetch the latest mn
 - [Installer and hosting](docs/installer.md): bootstrap flow, server
 - [Savings](docs/savings.md): estimates and assumptions
 - [Changelog](CHANGELOG.md): versions
+- [CONTINUE.md](CONTINUE.md): how to resume this project
 - [Benchmark](tests/bench/README.md): measured results in [tests/bench/RESULTS.md](tests/bench/RESULTS.md)
 
 ## Repository layout
