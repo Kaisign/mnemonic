@@ -5,14 +5,15 @@ updated: 2026-11-14
 - Git-based, token-cheap memory for coding agents; installed via <own-domain>
 
 ## Current
-- v0.0.2: enforce modes (task default), cache-expiry advisor, session economy rules; 118 tests pass
+- v0.0.3: first push in installer, start link (/start?repo=) in mn status; 122 tests pass
 - Tags v0.0.1, v0.0.2 on GitHub; this environment cannot push tags (proxy 403): user pushes them
 - Real-data test (local only): resumes after cache expiry -80% cost; Q&A -40% tokens, 14/14 with auto memory lookup
 
 ## Next
-1. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
-2. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
-3. Optional: benchmark at 50K+ history and with a larger model
+1. Sistemas: serve /start as start.md (text/plain)
+2. Test install in <owner>/test-repo from a fresh session (incl. shared memory step)
+3. Sistemas links mnemonic-test#shared/infra and records web01/DNS facts
+4. Optional: benchmark at 50K+ history and with a larger model
 
 ## Decisions
 - Single STATE.md, no history file -> fixed cost; git log is history

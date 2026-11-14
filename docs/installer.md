@@ -13,8 +13,20 @@ The domain root serves `install.md` as plain text. It tells the agent to:
    flags.
 4. Fill STATE.md from the README and top-level file list only, or ask for
    the goal if the repository is empty.
-5. Run `mn check`, commit without vendor names, ask before pushing.
-6. Explain the system to the user in their chat language.
+5. Run `mn check`, commit without vendor names and push (first push).
+6. Show `mn status`, hand over the start link and explain the system in the
+   user's chat language.
+
+After the first push the installer hands over the start link from
+`mn status`:
+```
+Read the instructions at <own-domain>/start?repo=owner/name
+```
+`/start` serves `start.md`, the same for every repository; the agent reads
+the repository from the `repo=` parameter of the link the user pasted, so the
+server needs no logic. start.md makes the agent attach the repository, load
+AGENTS.md and STATE.md (skipped when the adapter already did), run
+`mn hook start`, and answer with a four-line status and the next step.
 
 If the agent's fetch tool summarizes pages, `install.md` tells it to re-read
 the file verbatim with curl, so commands and flags are not altered.
@@ -34,6 +46,7 @@ cloud environments the host may need to be added to the allowed hosts.
   `git pull`. Publishing is just pushing to `main`.
 - Served paths, `text/plain; charset=utf-8`:
   - `/` and `/install.md` -> `install.md`
+  - `/start` (any query string) and `/start.md` -> `start.md`
   - `/mn` -> `mn`
 - Everything else returns 404; `.git` is not exposed.
 
@@ -44,6 +57,8 @@ server {
     root /var/www/html/<own-domain>;
     location = /           { try_files /install.md =404; default_type text/plain; charset utf-8; }
     location = /install.md { default_type text/plain; charset utf-8; }
+    location = /start      { try_files /start.md =404; default_type text/plain; charset utf-8; }
+    location = /start.md   { default_type text/plain; charset utf-8; }
     location = /mn         { default_type text/plain; charset utf-8; }
     location /             { return 404; }
 }

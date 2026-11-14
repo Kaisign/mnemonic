@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.3
+- The installer pushes the first commit instead of asking.
+- Start link for new sessions on an installed repository:
+  `<own-domain>/start?repo=owner/name` (served `start.md`; the
+  repository comes from the link). Printed by `mn status` and handed over at
+  the end of the installation.
+
 ## 0.0.2
 - Enforcement modes for STATE.md updates: `task` (default; blocks after 3
   work commits without an update), `strict`, `off` (`mn init --enforce`).

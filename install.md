@@ -96,11 +96,17 @@ Fill STATE.md (telegraphic, in the work language, caps from AGENTS.md):
 - Commit all generated files with a simple message such as
   `Add mnemonic memory system`. If brand-refs is none, the message, author and
   trailers must not name any AI tool or vendor.
-- Ask before pushing.
+- Push it right away to the default branch (`git push -u origin HEAD`). If
+  the environment refuses pushes to that branch, push a branch, say so, and
+  give the user the exact command to merge it.
 
 ## 7. Summary for the user
-Run `.mnemonic/mn status` and show its output. Then, in `chat_lang`, briefly
-explain:
+Run `.mnemonic/mn status` and show its output. Its last line is the start
+link for new sessions on this repository, e.g.
+`Read the instructions at <own-domain>/start?repo=owner/name`.
+Give it to the user on its own line, ready to copy, and say that pasting it
+into a new session (with the repository selected) resumes work from
+STATE.md. Then, in `chat_lang`, briefly explain:
 - AGENTS.md (preferences + protocol) and STATE.md load at every session start.
 - STATE.md is rewritten at the end of each task, never appended; history is git log.
 - Long-term memory (memory/) is never loaded whole: when a fact is missing

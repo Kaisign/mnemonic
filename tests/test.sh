@@ -221,6 +221,17 @@ new_repo; mkdir .claude; echo '{"hooks": {"Stop": [{"hooks": [{"type": "command"
 sh "$MN" init >/dev/null
 t "upgrade adds missing hook events only" "grep -q 'mn hook prompt' .claude/settings.json && [ \$(grep -c 'mn hook stop' .claude/settings.json) -eq 1 ]"
 
+# 13. Start link
+new_repo
+sh "$MN" init >/dev/null
+t "status without remote explains" "sh .mnemonic/mn status | grep -q 'set a git remote'"
+git remote add origin https://github.com/acme/widgets.git
+t "start link from https remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/widgets\$'"
+git remote set-url origin git@github.com:acme/gadgets.git
+t "start link from ssh remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/gadgets\$'"
+git remote set-url origin http://127.0.0.1:9999/git/acme/tools
+t "start link from proxied remote" "sh .mnemonic/mn status | grep -q 'start?repo=acme/tools\$'"
+
 # 9. Misc
 t "version" "sh '$MN' version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'"
 t "help" "sh '$MN' help | grep -q 'mn init'"

@@ -15,7 +15,11 @@ In an agent session, say:
 Read the instructions at <own-domain>
 ```
 The agent asks for the target repository and your preferences, installs the
-files, fills the initial state, commits and explains how to use it.
+files, fills the initial state, commits and pushes, and hands you a start
+link for later sessions on that repository:
+```
+Read the instructions at <own-domain>/start?repo=owner/name
+```
 
 Manual install from a repository root:
 ```
@@ -71,6 +75,7 @@ mn update              fetch the latest mn
 ## Repository layout
 ```
 install.md   installer prompt, served at the domain root
+start.md     session start prompt, served at /start
 mn           CLI, served at /mn
 tests/       test suite (sh tests/test.sh)
 docs/        documentation

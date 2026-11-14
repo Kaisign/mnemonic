@@ -3,7 +3,7 @@
 # POSIX sh. Requires: git, awk, sed, grep. Optional: curl or wget (update).
 set -eu
 
-MN_VERSION="0.0.2"
+MN_VERSION="0.0.3"
 MN_URL="${MN_URL:-https://<own-domain>}"
 MN_MAX_TOKENS="${MN_MAX_TOKENS:-1500}"
 BEGIN_MARK="<!-- mnemonic:begin -->"
@@ -830,6 +830,13 @@ cmd_hook() {
 
 # ---------- status ----------
 
+repo_slug() {
+  # owner/name from the origin URL (https, ssh or proxied), empty if unknown.
+  u=$(git remote get-url origin 2>/dev/null || true); [ -n "$u" ] || return 0
+  u=${u%.git}; u=${u%/}
+  printf '%s\n' "$u" | sed -n 's#.*[/:]\([A-Za-z0-9._-]*\)/\([A-Za-z0-9._-]*\)$#\1/\2#p'
+}
+
 cmd_status() {
   cd "$(root_dir)"
   load_config .
@@ -844,6 +851,9 @@ cmd_status() {
   a=off; grep -q 'mn hook' .claude/settings.json 2>/dev/null && a=on
   echo "automation:  git pre-commit $h ($P_ENFORCE mode), agent session hooks $a"
   echo "commands:    .mnemonic/mn help    guide: .mnemonic/README.md"
+  r=$(repo_slug)
+  if [ -n "$r" ]; then echo "new session: Read the instructions at ${MN_URL#https://}/start?repo=$r"
+  else echo "new session: set a git remote (origin) to get the start link"; fi
 }
 
 # ---------- update ----------
