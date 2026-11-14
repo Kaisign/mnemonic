@@ -31,4 +31,4 @@ updated: 2026-11-14
 
 ## Notes
 - Tests: sh tests/test.sh
-- Old mirror <own-domain> (web01) still serves 0.0.5; retire or redirect (user decision)
+- Old mirror <own-domain> retired from web01; user removes its DNS record
