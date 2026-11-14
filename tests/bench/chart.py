@@ -150,9 +150,22 @@ def main():
     ok = sum(r["correct"] for r in rows); tot = sum(r["total"] for r in rows)
     all_rows = list(csv.DictReader(open(SRC)))
     failed = [r for r in all_rows if r["label"] not in SIZES]
-    table = "\n".join(
-        f"<tr><td>{r['label']}</td><td>{r['scenario']}</td><td>{r['memory']}</td><td>{r['correct']}/{r['total']}</td>"
-        f"<td>{int(r['ctx_tokens']):,}</td><td>{int(r['agent_tokens']):,}</td><td>{r['tool_uses']}</td></tr>" for r in all_rows)
+    pair = {(r["label"], r["scenario"], r["memory"]): r for r in rows}
+    trs = []
+    for size in SIZES:
+        for sc in SCEN:
+            o, w = pair.get((size, sc, "without")), pair.get((size, sc, "with"))
+            if not (o and w):
+                continue
+            sv = 100 * (1 - w["agent_tokens"] / o["agent_tokens"])
+            trs.append(f"<tr><td>~{fmt(o['ctx_tokens'])}</td><td>{sc.split('-')[1]}</td>"
+                       f"<td>{o['agent_tokens']:,}</td><td>{w['agent_tokens']:,}</td><td><b>{sv:.0f}%</b></td>"
+                       f"<td>{o['ctx_tokens']:,} &rarr; {w['ctx_tokens']:,}</td>"
+                       f"<td>{o['correct']}/{o['total']} &middot; {w['correct']}/{w['total']}</td></tr>")
+    for r in failed:
+        trs.append(f"<tr><td colspan=7 style='text-align:left'>Excluded: {r['label']} {r['scenario']} with: "
+                   f"{r['correct']}/{r['total']} correct (skipped STATE.md), {int(r['agent_tokens']):,} tokens; rerun included above.</td></tr>")
+    table = "\n".join(trs)
     tiles = [(f"{save[-1]:.0f}%", f"fewer agent tokens at ~{fmt(xs[-1])}"),
              (f"{100*(1-ctx['with'][-1]/ctx['without'][-1]):.0f}%", "less memory context to read"),
              (f"{ok}/{tot}", "answers correct (valid runs)"),
@@ -165,7 +178,7 @@ body{{background:var(--bg);color:var(--t1);font:14px/1.5 system-ui,-apple-system
 h1{{font-size:22px;margin:0 0 4px}}p,li{{color:var(--t2)}}.tiles{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}}
 .tile{{border:1px solid var(--line);border-radius:8px;padding:12px}}.tile b{{font-size:26px;display:block}}.tile span{{color:var(--t2);font-size:12px}}
 img{{max-width:100%;height:auto;margin:12px 0;border:1px solid var(--line);border-radius:8px}}
-table{{border-collapse:collapse;width:100%;font-size:12px}}td,th{{border-bottom:1px solid var(--line);padding:4px 6px;text-align:right}}td:nth-child(-n+3),th:nth-child(-n+3){{text-align:left}}
+table{{border-collapse:collapse;width:100%;font-size:12px}}td,th{{border-bottom:1px solid var(--line);padding:4px 6px;text-align:right}}td:nth-child(-n+2),th:nth-child(-n+2){{text-align:left}}
 @media print{{img{{break-inside:avoid}}}}</style></head><body>
 <h1>mnemonic benchmark</h1><p>Resuming a project from a previous conversation, with and without mnemonic. 3 scenarios (linear, abstract, analytical), 3 conversation lengths, small model subagents, automatic grading.</p>
 <div class="tiles">{"".join(f'<div class="tile"><b>{a}</b><span>{b}</span></div>' for a, b in tiles)}</div>
@@ -180,7 +193,8 @@ table{{border-collapse:collapse;width:100%;font-size:12px}}td,th{{border-bottom:
 <li>Agent tokens include a fixed ~64K overhead per agent (instructions, tools), identical in both conditions.</li>
 <li>One "with" run skipped STATE.md and answered "unknown"; it is listed below and was rerun. In real installs STATE.md is auto-loaded through the adapter import, which removes this failure mode.</li>
 <li>The baseline is generous: a real session without memory has no transcript and must re-explore code or ask the user.</li></ul>
-<h2>All runs</h2><table><tr><th>length</th><th>scenario</th><th>memory</th><th>correct</th><th>context</th><th>agent tokens</th><th>tools</th></tr>
+<h2>All runs, paired</h2><p>Each row compares the same scenario and history length without and with mnemonic. Raw data: results.csv.</p>
+<table><tr><th>history</th><th>scenario</th><th>tokens without</th><th>tokens with</th><th>saving</th><th>memory context</th><th>correct (without &middot; with)</th></tr>
 {table}</table></body></html>"""
     open(os.path.join(OUT, "report.html"), "w").write(rep)
     print("wrote", ", ".join(["scaling.svg", "scenarios.svg", "context.svg", "report.html"]), "in", OUT)
